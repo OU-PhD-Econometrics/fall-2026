@@ -1,0 +1,14 @@
+# Normalize line endings: store text as LF in the repo, check out native
+* text=auto
+
+# Never diff these as text
+*.pdf   binary
+*.xlsx  binary
+*.jld   binary
+*.dta   binary
+*.png   binary
+*.jpg   binary
+
+# Bundled JS/CSS from knitted R Markdown slides: exclude from GitHub's
+# language statistics
+LectureNotes/**/*_files/** linguist-vendored

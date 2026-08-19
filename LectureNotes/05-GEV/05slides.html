@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lecture 5</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Tyler Ransom" />
+    <script src="05slides_files/header-attrs-2.29/header-attrs.js"></script>
+    <link href="05slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="05slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="05slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <link href="05slides_files/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet" />
+    <script src="05slides_files/htmlwidgets-1.6.1/htmlwidgets.js"></script>
+    <script src="05slides_files/d3-3.3.8/d3.min.js"></script>
+    <script src="05slides_files/dagre-0.4.0/dagre-d3.min.js"></script>
+    <link href="05slides_files/mermaid-0.3.0/dist/mermaid.css" rel="stylesheet" />
+    <script src="05slides_files/mermaid-0.3.0/dist/mermaid.slim.min.js"></script>
+    <link href="05slides_files/DiagrammeR-styles-0.2/styles.css" rel="stylesheet" />
+    <script src="05slides_files/chromatography-0.1/chromatography.js"></script>
+    <script src="05slides_files/DiagrammeR-binding-1.0.11/DiagrammeR.js"></script>
+    <script src="05slides_files/pymjs-1.3.2/pym.v1.min.js"></script>
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            TeX: { equationNumbers: { autoNumber: "AMS" } },
+        });
+    </script>
+        <style>
+        .mjx-mrow a {
+            color: black;
+            pointer-events: none;
+            cursor: default;
+        }
+    </style>
+    <link rel="stylesheet" href="ou-colors.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide   
+
+&lt;br&gt;&lt;br&gt;&lt;br&gt;
+
+# Lecture 5
+
+## GEV
+
+### Tyler Ransom
+
+### ECON 6343, University of Oklahoma
+
+---
+
+# Attribution
+
+Many of these slides are based on slides written by Peter Arcidiacono. I use them with his permission.
+
+These slides also heavily follow Chapter 4 of Train (2009)
+
+---
+# Plan for the day
+
+1. Nested Logit
+
+    - two-step estimation
+    
+2. Generalized Extreme Value Distributions
+
+    - multinomial logit and nested logit as special cases
+    
+3. Bresnahan, Stern, and Trajtenberg (1997)
+
+    - allows for correlations across multiple nests
+
+---
+# Red bus / blue bus choice set
+
+- As we discussed last time, adding another bus results in odd substitution patterns
+
+- This is because of the IIA property of multinomial logit models
+
+&lt;center&gt;
+<div class="DiagrammeR html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-e1510092d7155354ada8" style="width:504px;height:504px;"></div>
+<script>HTMLWidgets.pymChild = new pym.Child();HTMLWidgets.addPostRenderHandler(function(){
+                                setTimeout(function(){HTMLWidgets.pymChild.sendHeight();},100);
+                            });</script>
+<script type="application/json" data-for="htmlwidget-e1510092d7155354ada8">{"x":{"diagram":"\ngraph TD;\nA(Commute Method) --> B(Car);\nA-->C(Red Bus);\nA-->D(Blue Bus);\n"},"evals":[],"jsHooks":[]}</script>
+&lt;/center&gt;
+
+---
+# Nesting the choice set
+
+- One way to get around IIA is to .hi[nest] the choice set
+
+- Nesting explicitly introduces correlation across alternatives within the same nest
+
+&lt;center&gt;
+<div class="DiagrammeR html-widget html-fill-item-overflow-hidden html-fill-item" id="htmlwidget-170a8ab74e1b23143e0f" style="width:504px;height:504px;"></div>
+<script>HTMLWidgets.pymChild = new pym.Child();HTMLWidgets.addPostRenderHandler(function(){
+                                setTimeout(function(){HTMLWidgets.pymChild.sendHeight();},100);
+                            });</script>
+<script type="application/json" data-for="htmlwidget-170a8ab74e1b23143e0f">{"x":{"diagram":"\ngraph TD;\nA(Commute Method) --> B(Car);\nA-->C(Bus);\nC-->D(Red Bus);\nC-->E(Blue Bus);\n"},"evals":[],"jsHooks":[]}</script>
+&lt;/center&gt;
+
+---
+# Other cases where nesting is useful
+
+- Red bus / blue bus came from the transportation economics literature
+
+- But nesting is used in all fields of economics
+
+- Elections
+
+    - Suppose we have two candidates, A and B
+    - If we introduce C, whose platform resembles B, what will new vote shares be?
+    - (Primary elections are a kind of nesting)
+
+- Product markets
+
+    - Nesting "branded" and "generic" products (e.g. branded vs. micro-brewed beer)
+    - But some consumers won't purchase either type of the product
+    - Ignoring non-buyers, will give misleading price elasticities of demand
+
+
+---
+# Nested Logit
+- Coming back to the red bus/blue bus problem, we would like some way for the errors for the red bus to be correlated with the errors for the blue bus
+
+
+- The .hi[nested logit] allows a nest-specific error:
+
+.small[
+`\begin{align*}
+U_{i,RedBus}&amp;=u_{i,RedBus\phantom{e}}+\nu_{i,Bus}+\lambda\epsilon_{i,RedBus}\\
+U_{i,BlueBus}&amp;=u_{i,BlueBus}+\nu_{i,Bus}+\lambda\epsilon_{i,BlueBus}\\
+U_{i,Car}&amp;=u_{i,Car\phantom{eBus}}+\nu_{i,Car}+\lambda\epsilon_{i,Car}
+\end{align*}`
+]
+
+where:
+
+1. `\(\nu_{ik}+\lambda\epsilon_{ij}\)` is distributed Type I Extreme Value
+2. The `\(\nu\)`'s and the `\(\epsilon\)`'s are independent
+3. `\(\epsilon_{ij}\)` is distributed Type I extreme value
+4. Distribution of `\(\nu_k\)`'s is derived in Theorem 2.1 of Cardell (1997)
+
+
+---
+# Nested Logit 2
+
+- Composite error term for car is independent from either the red bus error or the blue bus error  
+
+- If we added a yellow bus, all errors in the bus nest would be independent conditional on choosing to take a bus (i.e. .hi[IIA within nest])
+
+- But the bus nest errors are correlated from the viewpoint of the top level (i.e. before conditioning on nest choice)
+
+- Note: adding two extreme value errors does .hi[not] give back an extreme value error
+    - But the difference between two T1EV errors is distributed logistic
+
+---
+# Nested Logit 3
+- More important than the exact error distribution is the choice probabilities:
+`\begin{align*}
+P_{iC}&amp;=\frac{\exp(u_{iC})}{\left[\exp\left(\frac{u_{iRB}}{\lambda}\right)+\exp\left(\frac{u_{iBB}}{\lambda}\right)\right]^{\lambda}+\exp(u_{iC})}\\
+P_{iRB}&amp;=\frac{\exp\left(\frac{u_{iRB}}{\lambda}\right)\left[\exp\left(\frac{u_{iRB}}{\lambda}\right)+\exp\left(\frac{u_{iBB}}{\lambda}\right)\right]^{\lambda-1}}{\left[\exp\left(\frac{u_{iRB}}{\lambda}\right)+\exp\left(\frac{u_{iBB}}{\lambda}\right)\right]^{\lambda}+\exp(u_{iC})}
+\end{align*}`
+
+
+- Not particularly intuitive, but can break it down into parts `\(P(B)P(RB|B)\)`:
+`\begin{align}
+P_{iRB}&amp;=\left(\frac{\left[\exp\left(\frac{u_{iRB}}{\lambda}\right)+\exp\left(\frac{u_{iBB}}{\lambda}\right)\right]^{\lambda}}{\left[\exp\left(\frac{u_{iRB}}{\lambda}\right)+\exp\left(\frac{u_{iBB}}{\lambda}\right)\right]^{\lambda}+\exp(u_{iC})}\right)\times\label{eq:pbus}\\
+&amp;\phantom{\times\times}\left(\frac{\exp\left(\frac{u_{iRB}}{\lambda}\right)}{\exp\left(\frac{u_{iRB}}{\lambda}\right)+\exp\left(\frac{u_{iBB}}{\lambda}\right)}\right)\nonumber
+\end{align}`
+
+
+---
+# Nested Logit Estimation
+The log likelihood can then be written as:
+.small[
+`\begin{align*}
+\ell&amp;=\sum_{i=1}^N\sum_{j\in J}(d_{ij}=1)\ln(P_{ij})\\
+&amp;= \sum_{i=1}^N\left[(d_{iC}=1)\ln(P_{iC})+\sum_{j\in J_B}(d_{ij}=1)\ln(P_{iB}P_{ij|B})\right]\\
+&amp;=\sum_{i=1}^N\left[(d_{iC}=1)\ln(P_{iC})+\sum_{j\in J_B}(d_{ij}=1)(\ln(P_{iB})+\ln(P_{ij|B}))\right]\\
+&amp;=\sum_{i=1}^N\Bigg[(d_{iC}=1)\ln(P_{iC})+(d_{iBB}=1+d_{iRB}=1)\ln(P_{iB})\\
+&amp;\qquad+\left.\sum_{j\in J_B}(d_{ij}=1)\ln(P_{ij|B})\right]
+\end{align*}`
+]
+
+
+---
+# Nested Logit Estimation 2
+- Could estimate a nested logit by straight maximum likelihood.  An alternative follows from decomposing the nests into the product of two probabilities: `\(P(RB|B)P(B)\)`
+
+- In order to do this, however, first decompose `\(u_{RB}\)` into two parts:
+`\begin{align*}
+u_{iRB}&amp;=u_{iB}+u_{iRB|B}
+\end{align*}`
+- We also need to choose normalizations:
+
+    - `\(u_{iC} = 0\)`
+    - `\(u_{iBB|B} = 0\)`
+
+- So we will estimate `\((\beta_{B},\beta_{RB}, \gamma,\lambda)\)` where `\(\gamma\)` corresponds to the `\(Z\)`'s (alt-specific)
+
+
+---
+# Nested Logit Estimation 3
+
+- Note that our normalizations imply the following observable components of utility
+`\begin{align*}
+u_{iC}&amp;=0\\
+u_{iBB}&amp;=\beta_{B}X_{i}+\gamma (Z_{BB}-Z_{C})\\
+u_{iRB}&amp;=(\beta_{B}+\beta_{RB})X_{i}+\gamma (Z_{RB}-Z_{C})
+\end{align*}`
+
+- Now estimate `\(\beta_{RB}\)` and `\(\gamma\)` in a 1st stage using only observations that chose bus, `\(N_B\)`:
+`\begin{align*}
+\ell_1&amp;=\sum_{i=1}^{N_B}(d_{iRB}=1)(u_{iRB|B}/\lambda)+\ln\left(1+\exp(u_{iRB|B}/\lambda)\right)
+\end{align*}`
+
+- The `\(1\)` in the `\(\ln()\)` operator corresponds to `\(\exp(u_{iBB|B}/\lambda)\)` since `\(u_{iBB|B} = 0\)`
+
+
+---
+# Nested Logit Estimation 4
+- Now consider the term in the numerator of `\(P(B)\)` in \eqref{eq:pbus}.  We can rewrite this as:
+`\begin{align*}
+\left[\exp\left(\frac{u_{iRB}}{\lambda}\right)+\exp\left(\frac{u_{iBB}}{\lambda}\right)\right]^{\lambda}&amp;=
+\exp(u_{iBB})\left[\exp\left(\frac{u_{iRB|B}}{\lambda}\right)+1\right]^{\lambda}\\
+&amp;=\exp(u_{iBB}+\lambda I_{iB})
+\end{align*}`
+
+where `\(I_{iB}\)` is called the .hi[inclusive value] and is given by:
+`\begin{align*}
+I_{iB}&amp;=\ln\left(\exp\left(\frac{u_{iRB|B}}{\lambda}\right)+1\right)
+\end{align*}`
+
+Note: looks like `\(E\left(\text{utility}\right)\)` associated with a particular nest (minus Euler's constant)
+
+
+
+---
+# Nested Logit Estimation 5
+
+- Taking the estimates of `\(u_{iRB|B}\)` as given and calculating the inclusive value, we now estimate a second logit to get `\(\beta_B\)`:
+`\begin{align*}
+\ell_2&amp;=\sum_i(d_{iB}=1)(u_{iBB}+\lambda I_{iB}-u_{iC})+\ln(1+\exp(u_{iBB}+\lambda I_{iB}-u_{iC}))
+\end{align*}`
+
+- Could do all this because log of the probabilities was additively separable. Consider the log likelihood 
+contribution of someone who chose red bus:
+`\begin{align*}
+\ln(P_{iB}(\beta_{B},\beta_{RB},\gamma,\lambda))&amp;+\ln(P_{iRB|B}(\beta_{RB},\gamma))
+\end{align*}`
+
+- We get estimates of `\(\beta_{RB}\)` and `\(\gamma\)` only from the second part of log likelihood
+
+- Then we take these as given when estimating `\(\beta_{B}\)` and `\(\lambda\)`
+
+
+---
+# The Nested Logit as a Dynamic Discrete Choice Model
+- Instead of having individuals know their full error, consider the case where the error is revealed in stages
+
+- First individuals choose whether or not to ride the bus and there is an extreme value error associated with both the bus and the car option
+
+- Individuals take into account that if they choose the bus option they will get to make a choice about which bus in the next period (option value)
+
+- With the errors in the second choice also distributed Type I extreme value, independent from each other, and independent from the errors in the first period, the expectation on the value of the second period decision is `\(\lambda I_{iB}\)` plus Euler's constant.
+
+
+---
+# Proposition 1 (McFadden, 1978)
+Let `\(Y_{j}=e^{u_{j}}\)`. Suppose we have a function `\(G(Y_{1},...,Y_{{J}})\)` that maps from `\(R^{{J}}\)` into `\(R^1\)`
+
+If `\(G\)` satisfies:
+
+1. `\(G\geq 0\)`
+
+2. `\(G\)` is homogeneous of some degree `\(k\)`
+
+3. `\(G\rightarrow \infty\)` as `\(Y_{j}\rightarrow \infty\)` for any `\(j\)`
+
+4. Cross partial derivatives weakly alternate in sign, beginning with `\(G_{i}\geq 0\)`
+
+---
+# Proposition 1 (Continued)
+
+
+then:
+`\begin{align*}
+F(u_1,...,u_\mathcal{J})&amp;=\exp\left[-G(Y_1,....,Y_{J})\right]
+\end{align*}`
+is the cumulative distribution of a multivariate extreme value function and:
+
+`\begin{align*}
+P_{i}&amp;=\frac{Y_{i}G_{i}}{G}
+\end{align*}`
+where `\(G_i\)` denotes the derivative of `\(G\)` with respect to `\(Y_i\)`
+
+
+---
+# Logit from GEV
+- Another way of thinking about the last statement is that:
+`\begin{align*}
+P_i&amp;=\frac{\partial \ln(G)}{\partial u_i}
+\end{align*}`
+
+- For the multinomial logit case, the `\(G\)` function is:
+`\begin{align*}
+G&amp;=\sum_{j=1}^{{J}}\exp(u_j)
+\end{align*}`
+with the derivative of the log of this giving multinomial logit probabilities
+
+- But `\(\ln(G)\)` (plus Euler's constant) is .hi[also] expected utility
+
+- In fact, for all GEV models `\(\ln(G)\)` is expected utility!
+
+
+---
+# Nested Logit from GEV
+
+- Suppose a nested logit model with two nests `\((F,NF)\)` and a no-purchase option `\(N\)`
+
+- The `\(G\)` function is then:
+`\begin{align*}
+G&amp;=\left(\sum_{j\in F}\exp(u_j/\lambda_F)\right)^{\lambda_F}+\left(\sum_{j\in NF}\exp(u_j/\lambda_{NF})\right)^{\lambda_{NF}}+\exp(u_N)
+\end{align*}`
+
+- Differentiating `\(\ln(G)\)` (the expected utility function) with respect to `\(u_j\)` where `\(k\in F\)` yields the probability `\(k\)` is chosen:
+
+`\begin{align*}
+P_k&amp;=\frac{\exp(u_k/\lambda_F)\left(\sum_{j\in F}\exp(u_j/\lambda_F)\right)^{\lambda_F-1}}{\left(\sum_{j\in F}\exp(u_j/\lambda_F)\right)^{\lambda_F}+\left(\sum_{j\in NF}\exp(u_j/\lambda_{NF})\right)^{\lambda_{NF}}+\exp(u_N)}
+\end{align*}`
+
+
+---
+# Overlapping nests (Bresnahan et al., 1997)
+
+- We can also come up with more general nesting structures
+
+- Bresnahan, Stern, and Trajtenberg (1997) model 4 overlapping nests for computers:
+
+1. Branded but not Frontier `\(\{B,NF\}\)`
+2. Generic but Frontier  `\(\{NB,F\}\)`
+3. Branded and Frontier  `\(\{B,F\}\)`
+4. Generic but not Frontier  `\(\{NB,NF\}\)`
+
+- Use the model to understand market power in PC sector in late 1980s
+
+- Overlapping nests explain coexistence of imitative entry and innovative investment
+
+---
+# Overlapping nests (Ishimaru, 2022)
+
+- Ishimaru (2022) allows for overlapping nests for colleges and universities in the US
+
+- His model allows for 4 combinations of overlapping nests:
+
+1. All colleges
+2. In- vs. Out-of-state
+3. 2-year vs. 4-year
+4. Public vs. Private
+
+- e.g. 2-yr in-state and 4-yr in-state would be irrelevant alternatives in a traditional nested logit model (where 2-yr/4-yr is the first level and in-/out-of-state is the second level), but they can be in the same nest here.
+
+---
+
+# References
+.smaller[
+Ackerberg, D. A. (2003). "Advertising, Learning, and Consumer Choice in Experience Good
+Markets: An Empirical Examination". In: _International Economic Review_ 44.3, pp.
+1007-1040. DOI:
+[10.1111/1468-2354.t01-2-00098](https://doi.org/10.1111%2F1468-2354.t01-2-00098).
+
+Adams, R. P. (2018). _Model Selection and Cross Validation_. Lecture Notes. Princeton
+University. URL:
+[https://www.cs.princeton.edu/courses/archive/fall18/cos324/files/model-selection.pdf](https://www.cs.princeton.edu/courses/archive/fall18/cos324/files/model-selection.pdf).
+
+Ahlfeldt, G. M., S. J. Redding, D. M. Sturm, et al. (2015). "The Economics of Density:
+Evidence From the Berlin Wall". In: _Econometrica_ 83.6, pp. 2127-2189. DOI:
+[10.3982/ECTA10876](https://doi.org/10.3982%2FECTA10876).
+
+Altonji, J. G., T. E. Elder, and C. R. Taber (2005). "Selection on Observed and Unobserved
+Variables: Assessing the Effectiveness of Catholic Schools". In: _Journal of Political
+Economy_ 113.1, pp. 151-184. DOI: [10.1086/426036](https://doi.org/10.1086%2F426036).
+
+Altonji, J. G. and C. R. Pierret (2001). "Employer Learning and Statistical
+Discrimination". In: _Quarterly Journal of Economics_ 116.1, pp. 313-350. DOI:
+[10.1162/003355301556329](https://doi.org/10.1162%2F003355301556329).
+
+Angrist, J. D. and A. B. Krueger (1991). "Does Compulsory School Attendance Affect
+Schooling and Earnings?" In: _Quarterly Journal of Economics_ 106.4, pp. 979-1014. DOI:
+[10.2307/2937954](https://doi.org/10.2307%2F2937954).
+
+Angrist, J. D. and J. Pischke (2009). _Mostly Harmless Econometrics: An Empiricist's
+Companion_. Princeton University Press. ISBN: 0691120358.
+
+Arcidiacono, P. (2004). "Ability Sorting and the Returns to College Major". In: _Journal
+of Econometrics_ 121, pp. 343-375. DOI:
+[10.1016/j.jeconom.2003.10.010](https://doi.org/10.1016%2Fj.jeconom.2003.10.010).
+
+Arcidiacono, P., E. Aucejo, A. Maurel, et al. (2016). _College Attrition and the Dynamics
+of Information Revelation_. Working Paper. Duke University. URL:
+[https://tyleransom.github.io/research/CollegeDropout2016May31.pdf](https://tyleransom.github.io/research/CollegeDropout2016May31.pdf).
+
+Arcidiacono, P., E. Aucejo, A. Maurel, et al. (2025). "College Attrition and the Dynamics
+of Information Revelation". In: _Journal of Political Economy_ 133.1. DOI:
+[10.1086/732526](https://doi.org/10.1086%2F732526).
+
+Arcidiacono, P. and J. B. Jones (2003). "Finite Mixture Distributions, Sequential
+Likelihood and the EM Algorithm". In: _Econometrica_ 71.3, pp. 933-946. DOI:
+[10.1111/1468-0262.00431](https://doi.org/10.1111%2F1468-0262.00431).
+
+Arcidiacono, P., J. Kinsler, and T. Ransom (2022b). "Asian American Discrimination in
+Harvard Admissions". In: _European Economic Review_ 144, p. 104079. DOI:
+[10.1016/j.euroecorev.2022.104079](https://doi.org/10.1016%2Fj.euroecorev.2022.104079).
+
+Arcidiacono, P., J. Kinsler, and T. Ransom (2022a). "Legacy and Athlete Preferences at
+Harvard". In: _Journal of Labor Economics_ 40.1, pp. 133-156. DOI:
+[10.1086/713744](https://doi.org/10.1086%2F713744).
+
+Arcidiacono, P. and R. A. Miller (2011). "Conditional Choice Probability Estimation of
+Dynamic Discrete Choice Models With Unobserved Heterogeneity". In: _Econometrica_ 79.6,
+pp. 1823-1867. DOI: [10.3982/ECTA7743](https://doi.org/10.3982%2FECTA7743).
+
+Arroyo Marioli, F., F. Bullano, S. Kucinskas, et al. (2020). _Tracking R of COVID-19: A
+New Real-Time Estimation Using the Kalman Filter_. Working Paper. medRxiv. DOI:
+[10.1101/2020.04.19.20071886](https://doi.org/10.1101%2F2020.04.19.20071886).
+
+Ashworth, J., V. J. Hotz, A. Maurel, et al. (2021). "Changes across Cohorts in Wage
+Returns to Schooling and Early Work Experiences". In: _Journal of Labor Economics_ 39.4,
+pp. 931-964. DOI: [10.1086/711851](https://doi.org/10.1086%2F711851).
+
+Attanasio, O. P., C. Meghir, and A. Santiago (2011). "Education Choices in Mexico: Using a
+Structural Model and a Randomized Experiment to Evaluate PROGRESA". In: _Review of
+Economic Studies_ 79.1, pp. 37-66. DOI:
+[10.1093/restud/rdr015](https://doi.org/10.1093%2Frestud%2Frdr015).
+
+Aucejo, E. M. and J. James (2019). "Catching Up to Girls: Understanding the Gender
+Imbalance in Educational Attainment Within Race". In: _Journal of Applied Econometrics_
+34.4, pp. 502-525. DOI: [10.1002/jae.2699](https://doi.org/10.1002%2Fjae.2699).
+
+Baragatti, M., A. Grimaud, and D. Pommeret (2013). "Likelihood-free Parallel Tempering".
+In: _Statistics and Computing_ 23.4, pp. 535-549. DOI: [
+10.1007/s11222-012-9328-6](https://doi.org/%2010.1007%2Fs11222-012-9328-6).
+
+Bayer, P., R. McMillan, A. Murphy, et al. (2016). "A Dynamic Model of Demand for Houses
+and Neighborhoods". In: _Econometrica_ 84.3, pp. 893-942. DOI:
+[10.3982/ECTA10170](https://doi.org/10.3982%2FECTA10170).
+
+Begg, C. B. and R. Gray (1984). "Calculation of Polychotomous Logistic Regression
+Parameters Using Individualized Regressions". In: _Biometrika_ 71.1, pp. 11-18. DOI:
+[10.1093/biomet/71.1.11](https://doi.org/10.1093%2Fbiomet%2F71.1.11).
+
+Beggs, S. D., N. S. Cardell, and J. Hausman (1981). "Assessing the Potential Demand for
+Electric Cars". In: _Journal of Econometrics_ 17.1, pp. 1-19. DOI:
+[10.1016/0304-4076(81)90056-7](https://doi.org/10.1016%2F0304-4076%2881%2990056-7).
+
+Berry, S., J. Levinsohn, and A. Pakes (1995). "Automobile Prices in Market Equilibrium".
+In: _Econometrica_ 63.4, pp. 841-890. URL:
+[http://www.jstor.org/stable/2171802](http://www.jstor.org/stable/2171802).
+
+Blass, A. A., S. Lach, and C. F. Manski (2010). "Using Elicited Choice Probabilities to
+Estimate Random Utility Models: Preferences for Electricity Reliability". In:
+_International Economic Review_ 51.2, pp. 421-440. DOI:
+[10.1111/j.1468-2354.2010.00586.x](https://doi.org/10.1111%2Fj.1468-2354.2010.00586.x).
+
+Blundell, R. (2010). "Comments on: ``Structural vs. Atheoretic Approaches to
+Econometrics'' by Michael Keane". In: _Journal of Econometrics_ 156.1, pp. 25-26. DOI:
+[10.1016/j.jeconom.2009.09.005](https://doi.org/10.1016%2Fj.jeconom.2009.09.005).
+
+Bresnahan, T. F., S. Stern, and M. Trajtenberg (1997). "Market Segmentation and the
+Sources of Rents from Innovation: Personal Computers in the Late 1980s". In: _The RAND
+Journal of Economics_ 28.0, pp. S17-S44. DOI:
+[10.2307/3087454](https://doi.org/10.2307%2F3087454).
+
+Brien, M. J., L. A. Lillard, and S. Stern (2006). "Cohabitation, Marriage, and Divorce in
+a Model of Match Quality". In: _International Economic Review_ 47.2, pp. 451-494. DOI:
+[10.1111/j.1468-2354.2006.00385.x](https://doi.org/10.1111%2Fj.1468-2354.2006.00385.x).
+
+Card, D. (1995). "Using Geographic Variation in College Proximity to Estimate the Return
+to Schooling". In: _Aspects of Labor Market Behaviour: Essays in Honour of John
+Vanderkamp_. Ed. by L. N. Christofides, E. K. Grant and R. Swidinsky. Toronto: University
+of Toronto Press.
+
+Cardell, N. S. (1997). "Variance Components Structures for the Extreme-Value and Logistic
+Distributions with Application to Models of Heterogeneity". In: _Econometric Theory_ 13.2,
+pp. 185-213. URL:
+[https://www.jstor.org/stable/3532724](https://www.jstor.org/stable/3532724).
+
+Caucutt, E. M., L. Lochner, J. Mullins, et al. (2020). _Child Skill Production: Accounting
+for Parental and Market-Based Time and Goods Investments_. Working Paper 27838. National
+Bureau of Economic Research. DOI: [10.3386/w27838](https://doi.org/10.3386%2Fw27838).
+
+Chen, X., H. Hong, and D. Nekipelov (2011). "Nonlinear Models of Measurement Errors". In:
+_Journal of Economic Literature_ 49.4, pp. 901-937. DOI:
+[10.1257/jel.49.4.901](https://doi.org/10.1257%2Fjel.49.4.901).
+
+Chintagunta, P. K. (1992). "Estimating a Multinomial Probit Model of Brand Choice Using
+the Method of Simulated Moments". In: _Marketing Science_ 11.4, pp. 386-407. DOI:
+[10.1287/mksc.11.4.386](https://doi.org/10.1287%2Fmksc.11.4.386).
+
+Cinelli, C. and C. Hazlett (2020). "Making Sense of Sensitivity: Extending Omitted
+Variable Bias". In: _Journal of the Royal Statistical Society: Series B (Statistical
+Methodology)_ 82.1, pp. 39-67. DOI:
+[10.1111/rssb.12348](https://doi.org/10.1111%2Frssb.12348).
+
+Coate, P. and K. Mangum (2019). _Fast Locations and Slowing Labor Mobility_. Working Paper
+19-49. Federal Reserve Bank of Philadelphia.
+
+Cunha, F., J. J. Heckman, and S. M. Schennach (2010). "Estimating the Technology of
+Cognitive and Noncognitive Skill Formation". In: _Econometrica_ 78.3, pp. 883-931. DOI:
+[10.3982/ECTA6551](https://doi.org/10.3982%2FECTA6551).
+
+Cunningham, S. (2021). _Causal Inference: The Mixtape_. Yale University Press. URL:
+[https://www.scunning.com/causalinference_norap.pdf](https://www.scunning.com/causalinference_norap.pdf).
+
+Delavande, A. and C. F. Manski (2015). "Using Elicited Choice Probabilities in
+Hypothetical Elections to Study Decisions to Vote". In: _Electoral Studies_ 38, pp. 28-37.
+DOI: [10.1016/j.electstud.2015.01.006](https://doi.org/10.1016%2Fj.electstud.2015.01.006).
+
+Delavande, A. and B. Zafar (2019). "University Choice: The Role of Expected Earnings,
+Nonpecuniary Outcomes, and Financial Constraints". In: _Journal of Political Economy_
+127.5, pp. 2343-2393. DOI: [10.1086/701808](https://doi.org/10.1086%2F701808).
+
+Diegert, P., M. A. Masten, and A. Poirier (2025). _Assessing Omitted Variable Bias when
+the Controls are Endogenous_. arXiv. DOI:
+[10.48550/ARXIV.2206.02303](https://doi.org/10.48550%2FARXIV.2206.02303).
+
+Erdem, T. and M. P. Keane (1996). "Decision-Making under Uncertainty: Capturing Dynamic
+Brand Choice Processes in Turbulent Consumer Goods Markets". In: _Marketing Science_ 15.1,
+pp. 1-20. DOI: [10.1287/mksc.15.1.1](https://doi.org/10.1287%2Fmksc.15.1.1).
+
+Evans, R. W. (2018). _Simulated Method of Moments (SMM) Estimation_. QuantEcon Note.
+University of Chicago. URL:
+[https://notes.quantecon.org/submission/5b3db2ceb9eab00015b89f93](https://notes.quantecon.org/submission/5b3db2ceb9eab00015b89f93).
+
+Farber, H. S. and R. Gibbons (1996). "Learning and Wage Dynamics". In: _Quarterly Journal
+of Economics_ 111.4, pp. 1007-1047. DOI:
+[10.2307/2946706](https://doi.org/10.2307%2F2946706).
+
+Fu, C., N. Grau, and J. Rivera (2020). _Wandering Astray: Teenagers' Choices of Schooling
+and Crime_. Working Paper. University of Wisconsin-Madison. URL:
+[https://www.ssc.wisc.edu/~cfu/wander.pdf](https://www.ssc.wisc.edu/~cfu/wander.pdf).
+
+Gillingham, K., F. Iskhakov, A. Munk-Nielsen, et al. (2022). "Equilibrium Trade in
+Automobiles". In: _Journal of Political Economy_. DOI:
+[10.1086/720463](https://doi.org/10.1086%2F720463).
+
+Haile, P. (2019). _``Structural vs. Reduced Form'' Language and Models in Empirical
+Economics_. Lecture Slides. Yale University. URL:
+[http://www.econ.yale.edu/~pah29/intro.pdf](http://www.econ.yale.edu/~pah29/intro.pdf).
+
+Haile, P. (2024). _Models, Measurement, and the Language of Empirical Economics_. Lecture
+Slides. Yale University. URL:
+[https://www.dropbox.com/s/8kwtwn30dyac18s/intro.pdf](https://www.dropbox.com/s/8kwtwn30dyac18s/intro.pdf).
+
+Heckman, J. J., J. Stixrud, and S. Urzua (2006). "The Effects of Cognitive and
+Noncognitive Abilities on Labor Market Outcomes and Social Behavior". In: _Journal of
+Labor Economics_ 24.3, pp. 411-482. DOI:
+[10.1086/504455](https://doi.org/10.1086%2F504455).
+
+Hotz, V. J. and R. A. Miller (1993). "Conditional Choice Probabilities and the Estimation
+of Dynamic Models". In: _The Review of Economic Studies_ 60.3, pp. 497-529. DOI:
+[10.2307/2298122](https://doi.org/10.2307%2F2298122).
+
+Hurwicz, L. (1950). "Generalization of the Concept of Identification". In: _Statistical
+Inference in Dynamic Economic Models_. Hoboken, NJ: John Wiley and Sons, pp. 245-257.
+
+Ishimaru, S. (2022). _Geographic Mobility of Youth and Spatial Gaps in Local College and
+Labor Market Opportunities_. Working Paper. Hitotsubashi University.
+
+James, J. (2011). _Ability Matching and Occupational Choice_. Working Paper 11-25. Federal
+Reserve Bank of Cleveland.
+
+James, J. (2017). "MM Algorithm for General Mixed Multinomial Logit Models". In: _Journal
+of Applied Econometrics_ 32.4, pp. 841-857. DOI:
+[10.1002/jae.2532](https://doi.org/10.1002%2Fjae.2532).
+
+Jin, H. and H. Shen (2020). "Foreign Asset Accumulation Among Emerging Market Economies: A
+Case for Coordination". In: _Review of Economic Dynamics_ 35.1, pp. 54-73. DOI:
+[10.1016/j.red.2019.04.006](https://doi.org/10.1016%2Fj.red.2019.04.006).
+
+Keane, M. P. (2010). "Structural vs. Atheoretic Approaches to Econometrics". In: _Journal
+of Econometrics_ 156.1, pp. 3-20. DOI:
+[10.1016/j.jeconom.2009.09.003](https://doi.org/10.1016%2Fj.jeconom.2009.09.003).
+
+Keane, M. P. and K. I. Wolpin (1997). "The Career Decisions of Young Men". In: _Journal of
+Political Economy_ 105.3, pp. 473-522. DOI:
+[10.1086/262080](https://doi.org/10.1086%2F262080).
+
+Koopmans, T. C. and O. Reiersol (1950). "The Identification of Structural
+Characteristics". In: _The Annals of Mathematical Statistics_ 21.2, pp. 165-181. URL:
+[http://www.jstor.org/stable/2236899](http://www.jstor.org/stable/2236899).
+
+Kosar, G., T. Ransom, and W. van der Klaauw (2022). "Understanding Migration Aversion
+Using Elicited Counterfactual Choice Probabilities". In: _Journal of Econometrics_ 231.1,
+pp. 123-147. DOI:
+[10.1016/j.jeconom.2020.07.056](https://doi.org/10.1016%2Fj.jeconom.2020.07.056).
+
+Krauth, B. (2016). "Bounding a Linear Causal Effect Using Relative Correlation
+Restrictions". In: _Journal of Econometric Methods_ 5.1, pp. 117-141. DOI:
+[10.1515/jem-2013-0013](https://doi.org/10.1515%2Fjem-2013-0013).
+
+Lang, K. and M. D. Palacios (2018). _The Determinants of Teachers' Occupational Choice_.
+Working Paper 24883. National Bureau of Economic Research. DOI:
+[10.3386/w24883](https://doi.org/10.3386%2Fw24883).
+
+Lee, D. S., J. McCrary, M. J. Moreira, et al. (2020). _Valid t-ratio Inference for IV_.
+Working Paper. arXiv. URL:
+[https://arxiv.org/abs/2010.05058](https://arxiv.org/abs/2010.05058).
+
+Lewbel, A. (2019). "The Identification Zoo: Meanings of Identification in Econometrics".
+In: _Journal of Economic Literature_ 57.4, pp. 835-903. DOI:
+[10.1257/jel.20181361](https://doi.org/10.1257%2Fjel.20181361).
+
+Mahoney, N. (2022). "Principles for Combining Descriptive and Model-Based Analysis in
+Applied Microeconomics Research". In: _Journal of Economic Perspectives_ 36.3, pp. 211-22.
+DOI: [10.1257/jep.36.3.211](https://doi.org/10.1257%2Fjep.36.3.211).
+
+McFadden, D. (1978). "Modelling the Choice of Residential Location". In: _Spatial
+Interaction Theory and Planning Models_. Ed. by A. Karlqvist, L. Lundqvist, F. Snickers
+and J. W. Weibull. Amsterdam: North Holland, pp. 75-96.
+
+McFadden, D. (1989). "A Method of Simulated Moments for Estimation of Discrete Response
+Models Without Numerical Integration". In: _Econometrica_ 57.5, pp. 995-1026. DOI:
+[10.2307/1913621](https://doi.org/10.2307%2F1913621). URL:
+[http://www.jstor.org/stable/1913621](http://www.jstor.org/stable/1913621).
+
+Mellon, J. (2020). _Rain, Rain, Go Away: 137 Potential Exclusion-Restriction Violations
+for Studies Using Weather as an Instrumental Variable_. Working Paper. University of
+Manchester. URL:
+[https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3715610](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3715610).
+
+Miller, R. A. (1984). "Job Matching and Occupational Choice". In: _Journal of Political
+Economy_ 92.6, pp. 1086-1120. DOI: [10.1086/261276](https://doi.org/10.1086%2F261276).
+
+Mincer, J. (1974). _Schooling, Experience and Earnings_. New York: Columbia University
+Press for National Bureau of Economic Research.
+
+Ost, B., W. Pan, and D. Webber (2018). "The Returns to College Persistence for Marginal
+Students: Regression Discontinuity Evidence from University Dismissal Policies". In:
+_Journal of Labor Economics_ 36.3, pp. 779-805. DOI:
+[10.1086/696204](https://doi.org/10.1086%2F696204).
+
+Oster, E. (2019). "Unobservable Selection and Coefficient Stability: Theory and Evidence".
+In: _Journal of Business &amp; Economic Statistics_ 37.2, pp. 187-204. DOI:
+[10.1080/07350015.2016.1227711](https://doi.org/10.1080%2F07350015.2016.1227711).
+
+Pischke, S. (2007). _Lecture Notes on Measurement Error_. Lecture Notes. London School of
+Economics. URL:
+[http://econ.lse.ac.uk/staff/spischke/ec524/Merr_new.pdf](http://econ.lse.ac.uk/staff/spischke/ec524/Merr_new.pdf).
+
+Ransom, M. R. and T. Ransom (2018). "Do High School Sports Build or Reveal Character?
+Bounding Causal Estimates of Sports Participation". In: _Economics of Education Review_
+64, pp. 75-89. DOI:
+[10.1016/j.econedurev.2018.04.002](https://doi.org/10.1016%2Fj.econedurev.2018.04.002).
+
+Ransom, T. (2022). "Labor Market Frictions and Moving Costs of the Employed and
+Unemployed". In: _Journal of Human Resources_ 57.S, pp. S137-S166. DOI:
+[10.3368/jhr.monopsony.0219-10013R2](https://doi.org/10.3368%2Fjhr.monopsony.0219-10013R2).
+
+Rudik, I. (2020). "Optimal Climate Policy When Damages Are Unknown". In: _American
+Economic Journal: Economic Policy_ 12.2, pp. 340-373. DOI:
+[10.1257/pol.20160541](https://doi.org/10.1257%2Fpol.20160541).
+
+Rust, J. (1987). "Optimal Replacement of GMC Bus Engines: An Empirical Model of Harold
+Zurcher". In: _Econometrica_ 55.5, pp. 999-1033. URL:
+[http://www.jstor.org/stable/1911259](http://www.jstor.org/stable/1911259).
+
+Shalizi, C. R. (2019). _Advanced Data Analysis from an Elementary Point of View_.
+Cambridge University Press. URL:
+[http://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/ADAfaEPoV.pdf](http://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/ADAfaEPoV.pdf).
+
+Smith Jr., A. A. (2008). "Indirect Inference". In: _The New Palgrave Dictionary of
+Economics_. Ed. by S. N. Durlauf and L. E. Blume. Vol. 1-8. London: Palgrave Macmillan.
+DOI: [10.1007/978-1-349-58802-2](https://doi.org/10.1007%2F978-1-349-58802-2). URL:
+[http://www.econ.yale.edu/smith/palgrave7.pdf](http://www.econ.yale.edu/smith/palgrave7.pdf).
+
+Stinebrickner, R. and T. Stinebrickner (2014a). "Academic Performance and College Dropout:
+Using Longitudinal Expectations Data to Estimate a Learning Model". In: _Journal of Labor
+Economics_ 32.3, pp. 601-644. DOI: [10.1086/675308](https://doi.org/10.1086%2F675308).
+
+Stinebrickner, R. and T. R. Stinebrickner (2014b). "A Major in Science? Initial Beliefs
+and Final Outcomes for College Major and Dropout". In: _Review of Economic Studies_ 81.1,
+pp. 426-472. DOI: [10.1093/restud/rdt025](https://doi.org/10.1093%2Frestud%2Frdt025).
+
+Su, C. and K. L. Judd (2012). "Constrained Optimization Approaches to Estimation of
+Structural Models". In: _Econometrica_ 80.5, pp. 2213-2230. DOI:
+[10.3982/ECTA7925](https://doi.org/10.3982%2FECTA7925).
+
+Train, K. (2009). _Discrete Choice Methods with Simulation_. 2nd ed. Cambridge; New York:
+Cambridge University Press. ISBN: 9780521766555.
+
+Wiswall, M. and B. Zafar (2018). "Preference for the Workplace, Investment in Human
+Capital, and Gender". In: _Quarterly Journal of Economics_ 133.1, pp. 457-507. DOI:
+[10.1093/qje/qjx035](https://doi.org/10.1093%2Fqje%2Fqjx035).
+
+Young, A. (2020). _Consistency without Inference: Instrumental Variables in Practical
+Application_. Working Paper. London School of Economics.
+]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false,
+  "ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

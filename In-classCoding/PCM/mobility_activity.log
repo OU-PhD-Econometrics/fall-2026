@@ -1,0 +1,464 @@
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\rans0001\Dropbox\GitHubReposTeaching\phd-metrics-fall-2025\In-classCoding\PCM\mobility_activity.log
+  log type:  text
+ opened on:  28 Oct 2025, 09:53:45
+
+. 
+. * Set seed for reproducibility
+. set seed 12345
+
+. 
+. ********************************************************************************
+. * 1. LOAD DATA
+. ********************************************************************************
+. 
+. * Import data from GitHub
+. import delimited "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2025/master/LectureNotes/11-SubjExp/SCEmobilityExample.csv", clear
+(encoding automatically selected: ISO-8859-1)
+(19 vars, 55,608 obs)
+
+. 
+. * Examine the data
+. describe
+
+Contains data
+ Observations:        55,608                  
+    Variables:            19                  
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+scuid           long    %12.0g                
+ratio           float   %9.0g                 
+dist            float   %9.0g                 
+crime           float   %9.0g                 
+income          float   %9.0g                 
+moved           byte    %8.0g                 
+scennum         byte    %8.0g                 
+altnum          byte    %8.0g                 
+wave            byte    %8.0g                 
+mvcost          byte    %8.0g                 
+family          byte    %8.0g                 
+norms           byte    %8.0g                 
+homecost        float   %9.0g                 
+size            float   %9.0g                 
+taxes           byte    %8.0g                 
+schqual         byte    %8.0g                 
+withincitymove  byte    %8.0g                 
+copyhome        byte    %8.0g                 
+blkscen         byte    %8.0g                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Sorted by: 
+     Note: Dataset has changed since last saved.
+
+. summarize
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+       scuid |     55,608    3.96e+07    3.38e+07     119007   9.99e+07
+       ratio |     55,608    .8169709    4.202228  -6.906755   6.906755
+        dist |     55,608   -1.469171    3.752067        -10          5
+       crime |     55,608           0    .3832977  -1.386294   1.386294
+      income |     55,608   -.0660253    .2558462  -1.272966   1.098612
+-------------+---------------------------------------------------------
+       moved |     55,608         -.5    .5000045         -1          0
+     scennum |     55,608         2.5    1.118044          1          4
+      altnum |     55,608           2    1.000009          1          3
+        wave |     55,608    1.507553    .4999474          1          2
+      mvcost |     55,608   -.9613725    4.495424        -30          8
+-------------+---------------------------------------------------------
+      family |     55,608   -.1279492    .3340363         -1          0
+       norms |     55,608     .015861    .5190286         -2          2
+    homecost |     55,608    .0140762    .1095025  -.3364722   .6931472
+        size |     55,608    .0131096    .1895361         -1        1.5
+       taxes |     55,608   -.0886563    1.881078        -10         10
+-------------+---------------------------------------------------------
+     schqual |     55,608    .0192418    .5117957         -2          2
+withincity~e |     55,608   -.0951662     .293447         -1          0
+    copyhome |     55,608   -.0475831    .2775651         -1          1
+     blkscen |     55,608    24.10783     12.4167          1         48
+
+. 
+. ********************************************************************************
+. * 2. DATA EXPLORATION
+. ********************************************************************************
+. 
+. * Count individuals and scenarios
+. // may need to -ssc install dinstinct- first!!
+. distinct scuid
+
+       |        Observations
+       |      total   distinct
+-------+----------------------
+ scuid |      55608       1861
+
+. distinct scuid scennum
+
+         |        Observations
+         |      total   distinct
+---------+----------------------
+   scuid |      55608       1861
+ scennum |      55608          4
+
+. distinct scuid blkscen
+
+         |        Observations
+         |      total   distinct
+---------+----------------------
+   scuid |      55608       1861
+ blkscen |      55608         44
+
+. distinct scuid blkscen altnum
+
+         |        Observations
+         |      total   distinct
+---------+----------------------
+   scuid |      55608       1861
+ blkscen |      55608         44
+  altnum |      55608          2
+
+. 
+. * Summary statistics for key variables
+. summarize ratio income homecost crime dist family moved
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+       ratio |     55,608    .8169709    4.202228  -6.906755   6.906755
+      income |     55,608   -.0660253    .2558462  -1.272966   1.098612
+    homecost |     55,608    .0140762    .1095025  -.3364722   .6931472
+       crime |     55,608           0    .3832977  -1.386294   1.386294
+        dist |     55,608   -1.469171    3.752067        -10          5
+-------------+---------------------------------------------------------
+      family |     55,608   -.1279492    .3340363         -1          0
+       moved |     55,608         -.5    .5000045         -1          0
+
+. 
+. * Histograms of choice probabilities
+. histogram ratio, bin(30) title("Distribution of Choice Ratios") ///
+>     xtitle("Log Odds Ratio") graphregion(color(white))
+(bin=30, start=-6.906755, width=.46045033)
+
+. graph export ratio_hist.png, replace
+file ratio_hist.png saved as PNG format
+
+. 
+. ********************************************************************************
+. * 3. BASIC ESTIMATION: MEDIAN REGRESSION
+. ********************************************************************************
+. 
+. * Declare panel structure
+. xtset scuid
+
+Panel variable: scuid (unbalanced)
+
+. 
+. * Basic quantile regression (median)
+. qreg ratio income homecost crime dist family size mvcost taxes ///
+>     norms schqual withincitymove copyhome moved
+
+Iteration 1:  WLS sum of weighted deviations =  80522.826
+
+Iteration 1:  Sum of abs. weighted deviations =  80526.178
+Iteration 2:  Sum of abs. weighted deviations =  80260.423
+Iteration 3:  Sum of abs. weighted deviations =  79933.948
+Iteration 4:  Sum of abs. weighted deviations =  79893.205
+Iteration 5:  Sum of abs. weighted deviations =  79858.488
+Iteration 6:  Sum of abs. weighted deviations =  79823.336
+note: alternate solutions exist.
+Iteration 7:  Sum of abs. weighted deviations =  79816.399
+Iteration 8:  Sum of abs. weighted deviations =  79790.782
+Iteration 9:  Sum of abs. weighted deviations =  79775.966
+Iteration 10: Sum of abs. weighted deviations =  79736.853
+note: alternate solutions exist.
+Iteration 11: Sum of abs. weighted deviations =  79678.798
+Iteration 12: Sum of abs. weighted deviations =  79650.723
+Iteration 13: Sum of abs. weighted deviations =  79628.941
+Iteration 14: Sum of abs. weighted deviations =  79628.562
+Iteration 15: Sum of abs. weighted deviations =  79608.363
+Iteration 16: Sum of abs. weighted deviations =  79608.152
+Iteration 17: Sum of abs. weighted deviations =  79608.152
+Iteration 18: Sum of abs. weighted deviations =  79586.594
+Iteration 19: Sum of abs. weighted deviations =  79578.621
+Iteration 20: Sum of abs. weighted deviations =  79578.037
+Iteration 21: Sum of abs. weighted deviations =  79576.243
+Iteration 22: Sum of abs. weighted deviations =  79576.243
+Iteration 23: Sum of abs. weighted deviations =  79576.243
+Iteration 24: Sum of abs. weighted deviations =  79576.003
+Iteration 25: Sum of abs. weighted deviations =  79576.003
+Iteration 26: Sum of abs. weighted deviations =  79574.406
+Iteration 27: Sum of abs. weighted deviations =  79574.406
+Iteration 28: Sum of abs. weighted deviations =   79573.21
+Iteration 29: Sum of abs. weighted deviations =   79573.21
+Iteration 30: Sum of abs. weighted deviations =   79573.21
+Iteration 31: Sum of abs. weighted deviations =   79573.21
+Iteration 32: Sum of abs. weighted deviations =   79573.21
+Iteration 33: Sum of abs. weighted deviations =  79573.019
+Iteration 34: Sum of abs. weighted deviations =  79572.858
+Iteration 35: Sum of abs. weighted deviations =  79572.766
+Iteration 36: Sum of abs. weighted deviations =  79572.738
+Iteration 37: Sum of abs. weighted deviations =  79572.728
+Iteration 38: Sum of abs. weighted deviations =  79572.728
+Iteration 39: Sum of abs. weighted deviations =   79572.64
+note: alternate solutions exist.
+Iteration 40: Sum of abs. weighted deviations =   79572.64
+Iteration 41: Sum of abs. weighted deviations =   79572.64
+Iteration 42: Sum of abs. weighted deviations =   79572.64
+Iteration 43: Sum of abs. weighted deviations =   79572.64
+Iteration 44: Sum of abs. weighted deviations =  79572.622
+Iteration 45: Sum of abs. weighted deviations =  79572.622
+Iteration 46: Sum of abs. weighted deviations =  79572.617
+Iteration 47: Sum of abs. weighted deviations =  79572.617
+note: alternate solutions exist.
+Iteration 48: Sum of abs. weighted deviations =  79572.617
+Iteration 49: Sum of abs. weighted deviations =  79572.617
+Iteration 50: Sum of abs. weighted deviations =  79572.617
+note: alternate solutions exist.
+Iteration 51: Sum of abs. weighted deviations =  79572.617
+Iteration 52: Sum of abs. weighted deviations =  79572.617
+Iteration 53: Sum of abs. weighted deviations =  79572.617
+Iteration 54: Sum of abs. weighted deviations =  79572.617
+Iteration 55: Sum of abs. weighted deviations =  79572.617
+
+Median regression                                   Number of obs =     55,608
+  Raw sum of deviations 86476.52 (about 0)
+  Min sum of deviations 79572.62                    Pseudo R2     =     0.0798
+
+--------------------------------------------------------------------------------
+         ratio | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+---------------+----------------------------------------------------------------
+        income |   3.757815   .0732908    51.27   0.000     3.614164    3.901465
+      homecost |  -.7986076   .1610085    -4.96   0.000    -1.114185   -.4830299
+         crime |  -.6405422   .0419342   -15.27   0.000    -.7227335   -.5583509
+          dist |  -.0549714   .0072042    -7.63   0.000    -.0690917    -.040851
+        family |   2.131733   .0522514    40.80   0.000      2.02932    2.234146
+          size |   .6359944   .0883532     7.20   0.000     .4628214    .8091673
+        mvcost |  -.0397001   .0037872   -10.48   0.000    -.0471229   -.0322772
+         taxes |  -.0403194   .0085394    -4.72   0.000    -.0570566   -.0235822
+         norms |   .1543551   .0312144     4.94   0.000     .0931746    .2155355
+       schqual |   .2387316    .033627     7.10   0.000     .1728224    .3046408
+withincitymove |   1.697409   .0578172    29.36   0.000     1.584087    1.810731
+      copyhome |   .1101977    .057974     1.90   0.057    -.0034317    .2238271
+         moved |  -2.579067   .0509695   -50.60   0.000    -2.678967   -2.479166
+         _cons |  -.0338533   .0267919    -1.26   0.206    -.0863655    .0186589
+--------------------------------------------------------------------------------
+
+. 
+. * Store results
+. estimates store basic_qreg
+
+. 
+. ********************************************************************************
+. * 3B. OLS FOR COMPARISON (INCONSISTENT)
+. ********************************************************************************
+. 
+. * OLS regression
+. regress ratio income homecost crime dist family size mvcost taxes ///
+>     norms schqual withincitymove copyhome moved
+
+      Source |       SS           df       MS      Number of obs   =    55,608
+-------------+----------------------------------   F(13, 55594)    =   1145.21
+       Model |  207415.749        13  15955.0576   Prob > F        =    0.0000
+    Residual |  774532.536    55,594  13.9319447   R-squared       =    0.2112
+-------------+----------------------------------   Adj R-squared   =    0.2110
+       Total |  981948.286    55,607  17.6587172   Root MSE        =    3.7326
+
+--------------------------------------------------------------------------------
+         ratio | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+---------------+----------------------------------------------------------------
+        income |   4.865026   .0733352    66.34   0.000     4.721288    5.008763
+      homecost |  -1.664552    .161106   -10.33   0.000    -1.980321   -1.348783
+         crime |  -1.452387   .0419596   -34.61   0.000    -1.534628   -1.370146
+          dist |  -.1081129   .0072086   -15.00   0.000    -.1222418    -.093984
+        family |   2.911732    .052283    55.69   0.000     2.809257    3.014207
+          size |  -.2991263   .0884067    -3.38   0.001    -.4724041   -.1258485
+        mvcost |  -.0252544   .0037895    -6.66   0.000    -.0326817    -.017827
+         taxes |  -.1280379   .0085445   -14.98   0.000    -.1447852   -.1112906
+         norms |   .6559837   .0312333    21.00   0.000     .5947662    .7172011
+       schqual |   .5697613   .0336474    16.93   0.000     .5038121    .6357104
+withincitymove |   1.794698   .0578522    31.02   0.000     1.681307    1.908089
+      copyhome |  -.3486906   .0580091    -6.01   0.000    -.4623888   -.2349924
+         moved |  -2.935962   .0510004   -57.57   0.000    -3.035923   -2.836001
+         _cons |   .0084787   .0268081     0.32   0.752    -.0440653    .0610227
+--------------------------------------------------------------------------------
+
+. 
+. estimates store ols_reg
+
+. 
+. * Clustered standard errors
+. regress ratio income homecost crime dist family size mvcost taxes ///
+>     norms schqual withincitymove copyhome moved, vce(cluster scuid)
+
+Linear regression                               Number of obs     =     55,608
+                                                F(13, 1860)       =     390.45
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.2112
+                                                Root MSE          =     3.7326
+
+                                (Std. err. adjusted for 1,861 clusters in scuid)
+--------------------------------------------------------------------------------
+               |               Robust
+         ratio | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+---------------+----------------------------------------------------------------
+        income |   4.865026   .1290856    37.69   0.000     4.611858    5.118194
+      homecost |  -1.664552    .223196    -7.46   0.000    -2.102293   -1.226811
+         crime |  -1.452387   .0488239   -29.75   0.000    -1.548142   -1.356631
+          dist |  -.1081129   .0073979   -14.61   0.000    -.1226221   -.0936038
+        family |   2.911732   .0792206    36.75   0.000     2.756362    3.067103
+          size |  -.2991263   .1103615    -2.71   0.007    -.5155717    -.082681
+        mvcost |  -.0252544   .0064336    -3.93   0.000    -.0378722   -.0126366
+         taxes |  -.1280379    .008387   -15.27   0.000    -.1444868    -.111589
+         norms |   .6559837    .033806    19.40   0.000     .5896821    .7222853
+       schqual |   .5697613   .0504539    11.29   0.000     .4708091    .6687135
+withincitymove |   1.794698   .0969953    18.50   0.000     1.604467    1.984929
+      copyhome |  -.3486906    .062174    -5.61   0.000    -.4706288   -.2267524
+         moved |  -2.935962   .0723247   -40.59   0.000    -3.077808   -2.794116
+         _cons |   .0084787   .0260932     0.32   0.745    -.0426964    .0596538
+--------------------------------------------------------------------------------
+
+. 
+. estimates store ols_cluster
+
+. 
+. * Compare OLS vs Median Regression
+. estimates table ols_reg ols_cluster basic_qreg, ///
+>     b(%9.3f) se stats(N r2) ///
+>     title("OLS vs Quantile Regression")
+
+OLS vs Quantile Regression
+
+--------------------------------------------------
+    Variable |  ols_reg    ols_clu~r   basic_q~g  
+-------------+------------------------------------
+      income |     4.865       4.865       3.758  
+             |     0.073       0.129       0.073  
+    homecost |    -1.665      -1.665      -0.799  
+             |     0.161       0.223       0.161  
+       crime |    -1.452      -1.452      -0.641  
+             |     0.042       0.049       0.042  
+        dist |    -0.108      -0.108      -0.055  
+             |     0.007       0.007       0.007  
+      family |     2.912       2.912       2.132  
+             |     0.052       0.079       0.052  
+        size |    -0.299      -0.299       0.636  
+             |     0.088       0.110       0.088  
+      mvcost |    -0.025      -0.025      -0.040  
+             |     0.004       0.006       0.004  
+       taxes |    -0.128      -0.128      -0.040  
+             |     0.009       0.008       0.009  
+       norms |     0.656       0.656       0.154  
+             |     0.031       0.034       0.031  
+     schqual |     0.570       0.570       0.239  
+             |     0.034       0.050       0.034  
+withincity~e |     1.795       1.795       1.697  
+             |     0.058       0.097       0.058  
+    copyhome |    -0.349      -0.349       0.110  
+             |     0.058       0.062       0.058  
+       moved |    -2.936      -2.936      -2.579  
+             |     0.051       0.072       0.051  
+       _cons |     0.008       0.008      -0.034  
+             |     0.027       0.026       0.027  
+-------------+------------------------------------
+           N |     55608       55608       55608  
+          r2 |     0.211       0.211              
+--------------------------------------------------
+                                      Legend: b/se
+
+. 
+. ********************************************************************************
+. * 4. BOOTSTRAPPED STANDARD ERRORS
+. ********************************************************************************
+. 
+. // * Cluster-bootstrapped quantile regression
+. // bootstrap, cluster(scuid) reps(100): ///
+. //     qreg ratio income homecost crime dist family size mvcost taxes ///
+. //         norms schqual withincitymove copyhome moved
+. // 
+. // estimates store bs_qreg
+. 
+. ********************************************************************************
+. * 5. COMPUTE WILLINGNESS-TO-PAY
+. ********************************************************************************
+. 
+. * Manual WTP calculation (after basic qreg)
+. quietly qreg ratio income homecost crime dist family size mvcost taxes ///
+>     norms schqual withincitymove copyhome moved
+
+. 
+. * Extract coefficients
+. scalar b_inc = _b[income]
+
+. scalar b_crime = _b[crime]
+
+. scalar b_dist = _b[dist]
+
+. scalar b_moved = _b[moved]
+
+. 
+. * WTP formula: -(exp(-beta_x/beta_inc) - 1) * median_income
+. * Using median income = $65,000
+. scalar medinc = 65000
+
+. 
+. * Crime WTP (for doubling crime rate: ln(2))
+. scalar wtp_crime = -(exp(-b_crime/b_inc * ln(2)) - 1) * medinc
+
+. display "WTP to avoid doubling crime: $" wtp_crime
+WTP to avoid doubling crime: $-8151.9218
+
+. 
+. * Distance WTP (per additional mile)
+. scalar wtp_dist = -(exp(-b_dist/b_inc) - 1) * medinc
+
+. display "WTP to reduce distance by 1 mile: $" wtp_dist
+WTP to reduce distance by 1 mile: $-957.8444
+
+. 
+. * Moving cost WTP
+. scalar wtp_moved = -(exp(-b_moved/b_inc) - 1) * medinc
+
+. display "Non-pecuniary moving cost: $" wtp_moved
+Non-pecuniary moving cost: $-64115.612
+
+. 
+. ********************************************************************************
+. * 6. BOOTSTRAPPED WTP WITH UNCERTAINTY
+. ********************************************************************************
+. 
+. * Bootstrap WTP estimates (fewer reps for speed)
+. bootstrap crime_wtp = (-(exp(-_b[crime]/_b[income]*ln(2))-1)*65000) ///
+>          dist_wtp = (-(exp(-_b[dist]/_b[income])-1)*65000) ///
+>          moved_wtp = (-(exp(-_b[moved]/_b[income])-1)*65000), ///
+>          cluster(scuid) reps(20): ///
+>     qreg ratio income homecost crime dist family size mvcost taxes ///
+>         norms schqual withincitymove copyhome moved
+(running qreg on estimation sample)
+
+Bootstrap replications (20): .........10.........20 done
+
+Bootstrap results                                       Number of obs = 55,608
+                                                        Replications  =     20
+
+      Command: qreg ratio income homecost crime dist family size mvcost taxes norms schqual withincitymove copyhome moved
+    crime_wtp: -(exp(-_b[crime]/_b[income]*ln(2))-1)*65000
+     dist_wtp: -(exp(-_b[dist]/_b[income])-1)*65000
+    moved_wtp: -(exp(-_b[moved]/_b[income])-1)*65000
+
+                               (Replications based on 1,861 clusters in scuid)
+------------------------------------------------------------------------------
+             |   Observed   Bootstrap                         Normal-based
+             | coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+   crime_wtp |  -8151.922   261.7887   -31.14   0.000    -8665.018   -7638.825
+    dist_wtp |  -957.8444   108.9532    -8.79   0.000    -1171.389      -744.3
+   moved_wtp |  -64115.61   6190.045   -10.36   0.000    -76247.88   -51983.35
+------------------------------------------------------------------------------
+
+. 
+. log close
+      name:  <unnamed>
+       log:  C:\Users\rans0001\Dropbox\GitHubReposTeaching\phd-metrics-fall-2025\In-classCoding\PCM\mobility_activity.log
+  log type:  text
+ closed on:  28 Oct 2025, 09:54:26
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Lecture 14</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Tyler Ransom" />
+    <script src="14slides_files/header-attrs-2.29/header-attrs.js"></script>
+    <link href="14slides_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="14slides_files/remark-css-0.0.1/metropolis.css" rel="stylesheet" />
+    <link href="14slides_files/remark-css-0.0.1/metropolis-fonts.css" rel="stylesheet" />
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            TeX: { equationNumbers: { autoNumber: "AMS" } },
+        });
+    </script>
+        <style>
+        .mjx-mrow a {
+            color: black;
+            pointer-events: none;
+            cursor: default;
+        }
+    </style>
+    <link rel="stylesheet" href="ou-colors.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+class: title-slide
+
+&lt;br&gt;&lt;br&gt;&lt;br&gt;
+
+# Lecture 14
+
+## Advanced Optimization Techniques
+
+### Tyler Ransom
+
+### ECON 6343, University of Oklahoma
+
+---
+
+# Plan for the Day
+
+1. More on optimization and optimizers
+
+2. Constrained optimization
+
+3. Analytical gradients and hessians
+
+4. Fixed points and MPEC
+
+
+---
+# Beyond nonlinear optimization
+
+- Throughout this course, we've focused on Julia's `Optim` package
+
+- This package provides algorithms for nonlinear unconstrained optimization
+
+    - This makes sense: likelihood functions are nonlinear
+
+- But there are many other types of optimizers out there
+
+- They may not be as applicable for econometric applications
+
+- But they might be helpful for certain applications
+
+
+---
+# Other optimizers
+
+- Aside from nonlinear optimization, there are:
+
+    - Linear programming
+
+    - Mixed integer programming
+
+    - Semidefinite programming
+
+    - Convex optimization
+
+    - Constrained nonlinear optimization
+
+- Each of these algorithms can be accessed through Julia's `JuMP` package
+
+
+---
+# JuMP uses
+
+- These other algorithms in JuMP have valuable real-world uses
+
+    - Optimal bus routes
+
+    - Optimal power grid architecture
+
+    - Solving budget constraint problems
+
+    - Solving sudoku puzzles
+
+- The great thing about JuMP is that it .hi[interfaces] with a plethora of optimizers
+
+- You can keep your code the same and simply switch out which optimizer to use
+
+
+---
+# Why do we need constrained optimization?
+
+- In nonlinear optimization, constraints can be very helpful, for a number of reasons:
+
+- .hi[Numerical stability]
+    - e.g. optimization will crash if it guesses a variance to be negative
+    
+- .hi[Make results consistent with economic theory]
+    - e.g. discount factor `\(\beta \in [0,1]\)` in DDC models, otherwise model is undefined
+    
+- .hi[Simplify the problem] 
+    - e.g. `\(\beta=0\)` reduces to a static model
+
+- .hi[More quickly solve equilibrium models] through a method called MPEC
+
+
+---
+# Brief review of constrained optimization
+
+- How do we do constrained optimization in economics? Lagrangians!
+
+`\begin{align*}
+&amp; \max_x f(x) \\
+&amp; \text{subject to} \\
+&amp; g(x)\leq 0
+\end{align*}`
+
+`\begin{align*}
+\mathcal{L}(x,\lambda) &amp;= f(x) - \lambda g(x)
+\end{align*}`
+
+- In the case of optimization, `\(f(x)\)` is our likelihood function; `\(x\)`'s are the parameters
+
+- The first-order conditions (FOCs) tell us what the optimal `\(x\)`'s are
+
+- Also must satisfy second-order (SOCs) and Kuhn-Tucker conditions
+
+- In this case, the SOCs involve looking at the .hi[bordered Hessian]
+
+---
+# How to use JuMP
+
+- Let's go through an example of how to estimate an econometric model with `JuMP`
+
+- There are four basic components to any `JuMP` model:
+
+    1. An optimizer
+    
+    2. Variables
+    
+    3. Constraints
+    
+    4. Objective function
+    
+- This list is not too different from what goes into `Optim.jl`
+
+---
+# Limitations and considerations when using JuMP
+
+- You cannot vectorize the objective function
+
+    - i.e. everything needs to be expressed as a scalar
+
+- You cannot use `Distributions.jl` objects in the objective function
+
+- It is a royal pain to extract the Hessian of the objective function
+
+    - We need the Hessian to conduct statistical inference
+
+- It is very simple to add constraints
+
+- When adding constraints, the Hessian becomes the bordered Hessian
+
+- This gives incorrect SEs; JuMP also ignores linear constraints in the Hessian
+
+
+---
+# Example: unconstrained optimization with Optim
+
+- This example will estimate a linear regression model by maximum likelihood
+
+- The objective is to maximize `\(\ell = \sum_i \log f_i(\beta;y_i,X_i)\)` where `\(f(\cdot)\)` is the normal pdf
+
+.scroll-box-12[
+
+``` julia
+using JuMP, Ipopt, Optim, LineSearches, LinearAlgebra, SparseArrays, Distributions, DataFrames, CSV, HTTP
+
+# Let's read in the data from PS8
+url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2021/master/ProblemSets/PS8-factor/nlsy.csv"
+df = CSV.read(HTTP.get(url).body, DataFrame)
+X = [df.black df.hispanic df.female df.schoolt df.gradHS df.grad4yr ones(size(df,1),1)]
+y = df.logwage
+
+# first let's do unconstrained optimization
+function reg_mle(θ, X, y)
+    # first K elements are the coefficients of the outcome equation
+    β = θ[1:end-1]
+    # last element is the variance (stdev)
+    σ = θ[end]
+    # now build the likelihood
+    loglike = -sum(-.5 .* ( log(2*π) .+ log(σ^2) .+ ( (y .- X*β)./σ ).^2 ) )
+    # more intuitive way? (but JuMP can't use pdf's from Distributions.jl)
+    #loglike = -sum( log(1 ./ sqrt(σ^2)) .+ logpdf.(Normal(0,1),(y .- X*β)./sqrt(σ^2)) )
+    return loglike
+end
+
+# run the optimizer for MLE
+svals = vcat(X\y,.5);
+td = TwiceDifferentiable(th -&gt; reg_mle(th, X, y), svals; autodiff = :forward)
+θ̂_optim_ad = optimize(td, svals, Newton(linesearch = BackTracking()), Optim.Options(g_tol = 1e-5, iterations=100_000, show_trace=true, show_every=1))
+θ̂_mle_optim_ad = θ̂_optim_ad.minimizer
+loglikeval = θ̂_optim_ad.minimum
+# evaluate the Hessian at the estimates
+H  = Optim.hessian!(td, θ̂_mle_optim_ad)
+θ̂_mle_optim_ad_se = sqrt.(diag(inv(H)))
+# store results in a data frame
+results = DataFrame(coef_mle = vcat(vec(θ̂_mle_optim_ad),-loglikeval), se_mle = vcat(vec(θ̂_mle_optim_ad_se),missing), coef_ols = vcat(X\y,missing,missing) )
+
+│ Row │ coef_mle   │ se_mle     │ coef_ols   │
+├─────┼────────────┼────────────┼────────────┼
+│ 1   │ -0.167441  │ 0.0242349  │ -0.167441  │
+│ 2   │ -0.054249  │ 0.0257493  │ -0.054249  │
+│ 3   │ -0.155049  │ 0.0197612  │ -0.155049  │
+│ 4   │ 0.00525102 │ 0.00493929 │ 0.00525102 │
+│ 5   │ 0.195649   │ 0.0493521  │ 0.195649   │
+│ 6   │ 0.299131   │ 0.0276513  │ 0.299131   │
+│ 7   │ 2.00771    │ 0.0485718  │ 2.00771    │
+│ 8   │ 0.476761   │ 0.00682761 │ missing    │
+│ 9   │ -1653.45   │ missing    │ missing    │
+```
+]
+
+---
+# Same example using JuMP
+
+.scroll-box-18[
+
+``` julia
+# we need this function for later
+function dense_hessian(hessian_sparsity, V, n)
+    I = [i for (i,j) in hessian_sparsity]
+    J = [j for (i,j) in hessian_sparsity]
+    raw = sparse(I, J, V, n, n)
+    return Matrix(raw + raw' - sparse(diagm(0=&gt;diag(raw))))
+end
+
+function jump_mle(θ₀, X, y)
+    # define the model
+    model = Model(Ipopt.Optimizer)
+    set_silent(model)
+    @variable(model, β[j=1:size(X,2)], start = θ₀[j])
+    @variable(model, σ, start = θ₀[end])
+    @NLobjective(model, Max, sum(-.5 * ( log(2*π) + log(σ^2) + ((y[i] - sum(X[i,j]*β[j] for j in 1:size(X,2)) )/σ)^2 ) for i in 1:size(X,1) ) )
+    # optimize the model
+    JuMP.optimize!(model)
+    # return parameter estimates
+    coef_jump = vcat(JuMP.value.(β), JuMP.value(σ), JuMP.objective_value(model) )
+    # return Hessian for SEs
+    values = coef_jump[1:end-1]
+    MOI = JuMP.MathOptInterface
+    d = JuMP.NLPEvaluator(model)
+    MOI.initialize(d, [:Hess])
+    hessian_sparsity = MOI.hessian_lagrangian_structure(d)
+    V = zeros(length(hessian_sparsity))
+    MOI.eval_hessian_lagrangian(d, V, values, 1.0, Float64[])
+    H = dense_hessian(hessian_sparsity, V, length(values))
+    se_jump = sqrt.(diag(inv(-H)))
+    return coef_jump, se_jump
+end
+jump_coefs,jump_se = jump_mle(svals, X, y)
+results.coef_jump = jump_coefs
+results.se_jump = vcat(jump_se,missing)
+
+│ Row │ coef_mle   │ se_mle     │ coef_jump  │ se_jump    │
+├─────┼────────────┼────────────┼────────────┼────────────┼
+│ 1   │ -0.167441  │ 0.0242349  │ -0.167441  │ 0.0242349  │
+│ 2   │ -0.054249  │ 0.0257493  │ -0.054249  │ 0.0257493  │
+│ 3   │ -0.155049  │ 0.0197612  │ -0.155049  │ 0.0197612  │
+│ 4   │ 0.00525102 │ 0.00493929 │ 0.00525102 │ 0.00493929 │
+│ 5   │ 0.195649   │ 0.0493521  │ 0.195649   │ 0.0493521  │
+│ 6   │ 0.299131   │ 0.0276513  │ 0.299131   │ 0.0276513  │
+│ 7   │ 2.00771    │ 0.0485718  │ 2.00771    │ 0.0485718  │
+│ 8   │ 0.476761   │ 0.00682761 │ 0.476761   │ 0.00682761 │
+│ 9   │ -1653.45   │ missing    │ -1653.45   │ missing    │
+```
+]
+
+---
+# Doing constrained optimization
+
+- In `JuMP`, it is simple to add a constraint
+
+- Simply add, for example, `@constraint(model, β[2] == .16)`
+
+- In `Optim`, it is a little bit trickier
+
+    - In this case, we need to treat the constrained parameter as "data"
+    
+    - We need to reduce the dimensionality of the vector we're estimating
+    
+    - Then we need to impose the constraint
+    
+    - We also need to repeat these steps outside of the optimization
+
+
+---
+# Constrain `\(\beta_2 = .16, \beta_4 = 1+2\beta_3\)` in JuMP
+
+- In `JuMP`, we have
+
+.scroll-box-16[
+
+``` julia
+function jump_cns2_mle(θ₀, X, y)
+    # define the model
+    model = Model(Ipopt.Optimizer)
+    set_silent(model)
+    @variable(model, β[j=1:size(X,2)], start = θ₀[j])
+    @variable(model, σ, start = θ₀[end])
+*    @constraint(model, β[2] == .16)
+*    @constraint(model, β[4] == 1+2*β[3])
+    @NLobjective(model, Max, sum(-.5 * ( log(2*π) + log(σ^2) + ((y[i] - sum(X[i,j]*β[j] for j in 1:size(X,2)) )/σ)^2 ) for i in 1:size(X,1) ) )
+    # optimize the model
+    JuMP.optimize!(model)
+    # return parameter estimates
+    coef_jump = vcat(JuMP.value.(β), JuMP.value(σ), JuMP.objective_value(model) )
+    # return Hessian for SEs
+    values = coef_jump[1:end-1]
+    MOI = JuMP.MathOptInterface
+    d = JuMP.NLPEvaluator(model)
+    MOI.initialize(d, [:Hess])
+    hessian_sparsity = MOI.hessian_lagrangian_structure(d)
+    V = zeros(length(hessian_sparsity))
+    MOI.eval_hessian_lagrangian(d, V, values, 1.0, Float64[])
+    H = dense_hessian(hessian_sparsity, V, length(values))
+    se_jump = sqrt.(Complex.(diag(inv(-H))))
+    return coef_jump, se_jump
+end
+jump_cns2_coefs,jump_cns2_se = jump_cns2_mle(svals, X, y)
+results.coef_jump_cns2 = jump_cns2_coefs
+results.se_jump_cns2 = vcat(jump_cns2_se,missing)
+
+│ Row │ coef_jump  │ se_jump    │ coef_jump_cns2 │ se_jump_cns2 │
+│     │ Float64    │ Float64?   │ Float64        │ Float64?     │
+├─────┼────────────┼────────────┼────────────────┼──────────────┤
+│ 1   │ -0.167441  │ 0.0242349  │ -0.0823977     │ 0.0260503    │
+│ 2   │ -0.054249  │ 0.0257493  │ 0.16           │ 0.0284127    │
+│ 3   │ -0.155049  │ 0.0197612  │ -0.488346      │ 0.0238168    │
+│ 4   │ 0.00525102 │ 0.00493929 │ 0.0233084      │ 0.00531191   │
+│ 5   │ 0.195649   │ 0.0493521  │ 0.248021       │ 0.0527678    │
+│ 6   │ 0.299131   │ 0.0276513  │ 0.308031       │ 0.0295506    │
+│ 7   │ 2.00771    │ 0.0485718  │ 1.96151        │ 0.051928     │
+│ 8   │ 0.476761   │ 0.00682761 │ 0.509483       │ 0.00841742   │
+│ 9   │ -1653.45   │ missing    │ -1815.29       │ missing      │
+```
+]
+
+
+---
+# Comments on JuMP results
+
+- `JuMP` gives us the correct point estimates
+
+- The standard errors, however, are incorrect
+
+- At the very least, `\(\text{se}(\beta_2)\)` should be 0
+
+- Note that the constrained log likelihood is much lower; this is as it should be
+
+
+
+---
+# Constrain `\(\beta_2 = .16, \beta_4 = 1+2\beta_3\)` in Optim
+
+- In `Optim`, it's helpful to create a matrix that stores our constraints
+
+.scroll-box-16[
+
+``` julia
+# can we use optim for the same constrained optimization?
+# now we need additional information: whether the constraint is "type 1" (set equal to fixed value) or "type 2" (set equal to another parameter)
+# first, set up constraints
+#     Type 1  Restricting one parameter ("parmA") to equal a fixed value
+#     Type 2  Restricting one parameter, parmA, to equal another ("parmB"),
+#             potentially multiplied by some real number q and addd to
+#             some constant m, e.g. parmA = m + q*parmB.
+#
+#   RESTRMAT follows a very specific format. It is an R-by-5 matrix,
+#   where R is the number of restrictions. The role of each of the four
+#   columns is as follows
+#
+#   Column 1  The index of parmA
+#   Column 2  The index of parmB (zero if type 1 restriction)
+#   Column 3  Binary vector w   here 0 indciates a type 1 restriction (parmA
+#               set equal to fixed value) and 1 indicates a type 2
+#               restriction (parmA set equal to parmB)
+#   Column 4  If a type 1 restriction, 0. If     a type 2 restriction, any
+#               real number q such that parmA = q*parmB.
+#   Column 5  If a type 1 restriction, the fixed value. If a type 2
+#                restriction, any real number m such that parmA = m+q*parmB.
+#   NOTE: parmA should always be a later index than parmB
+cns_mat2 = [2 0 0 0 .16;
+            4 3 1 2 1]
+
+function cns2_reg_mle(θ, cns_mat, X, y)
+    # first K elements are the coefficients of the outcome equation
+    β = θ[1:end-1]
+    # last element is the variance (stdev)
+    σ = θ[end]
+    # impose constraints
+    for r in 1:size(cns_mat,1)
+        idx1 = convert(Int64,cns_mat[r,1])
+        idx2 = convert(Int64,cns_mat[r,2])
+        if cns_mat[r,3]==0
+            insert!(β,idx1,cns_mat[r,5])
+        else
+            insert!(β,idx1,cns_mat[r,5]+cns_mat[r,4]*β[idx2])
+        end
+    end
+    # now build the likelihood
+    loglike = -sum(-.5 .* ( log(2*π) .+ log(σ^2) .+ ( (y .- X*β)./σ ).^2 ) )
+    # more intuitive way? (but JuMP can't use pdf's from Distributions.jl)
+    #loglike = -sum( log(1 ./ sqrt(σ^2)) .+ logpdf.(Normal(0,1),(y .- X*β)./sqrt(σ^2)) )
+    return loglike
+end
+
+# run the optimizer for MLE
+svals = vcat(X\y,.5)
+# constraints are treated as data, so take them out of starting values (they get added back in inside the obj function)
+for r=1:size(cns_mat2,1)
+    deleteat!(svals, convert(Int64,cns_mat2[r,1]))
+end
+td = TwiceDifferentiable(th -&gt; cns2_reg_mle(th, cns_mat2, X, y), svals; autodiff = :forward)
+θ̂_optim_ad = optimize(td, svals, Newton(linesearch = BackTracking()), Optim.Options(g_tol = 1e-5, iterations=100_000, show_trace=true, show_every=1))
+θ̂_mle_optim_ad = θ̂_optim_ad.minimizer
+loglikeval = θ̂_optim_ad.minimum
+# evaluate the Hessian at the estimates
+H  = Optim.hessian!(td, θ̂_mle_optim_ad)
+θ̂_mle_optim_ad_se = sqrt.(diag(inv(H)))
+println(θ̂_mle_optim_ad)
+# add back in constraint in both estimates and SEs
+for r in 1:size(cns_mat2,1)
+    idx1 = convert(Int64,cns_mat2[r,1])
+    idx2 = convert(Int64,cns_mat2[r,2])
+    if cns_mat2[r,3]==0
+        insert!(θ̂_mle_optim_ad,idx1,cns_mat2[r,5])
+        insert!(θ̂_mle_optim_ad_se,idx1,0)
+    else
+        insert!(θ̂_mle_optim_ad,idx1,cns_mat2[r,5]+cns_mat2[r,4]*θ̂_mle_optim_ad[idx2])
+        insert!(θ̂_mle_optim_ad_se,idx1,cns_mat2[r,5]+cns_mat2[r,4]*θ̂_mle_optim_ad_se[idx2]) # this is wrong
+    end
+    println(θ̂_mle_optim_ad)
+end
+# store results in a data frame
+results.coef_optim_cns2 = vcat(θ̂_mle_optim_ad,-loglikeval)
+results.se_optim_cns2   = vcat(θ̂_mle_optim_ad_se,missing)
+
+│ Row │ coef_mle   │ se_mle     │ coef_optim_cns2 │ se_optim_cns2 │
+│     │ Float64    │ Float64?   │ Float64         │ Float64?      │
+├─────┼────────────┼────────────┼─────────────────┼───────────────┤
+│ 1   │ -0.167441  │ 0.0242349  │ -0.0823977      │ 0.0246269     │
+│ 2   │ -0.054249  │ 0.0257493  │ 0.16            │ 0.0           │
+│ 3   │ -0.155049  │ 0.0197612  │ -0.488346       │ 0.00256683    │
+│ 4   │ 0.00525102 │ 0.00493929 │ 0.0233084       │ 1.00513       │
+│ 5   │ 0.195649   │ 0.0493521  │ 0.248021        │ 0.0526101     │
+│ 6   │ 0.299131   │ 0.0276513  │ 0.308031        │ 0.0291047     │
+│ 7   │ 2.00771    │ 0.0485718  │ 1.96151         │ 0.0506234     │
+│ 8   │ 0.476761   │ 0.00682761 │ 0.509483        │ 0.00729623    │
+│ 9   │ -1653.45   │ missing    │ -1815.29        │ missing       │
+```
+]
+
+
+---
+# Analytical gradients and Hessians
+
+- So far in this course, we've used Julia's `autodiff` to take derivatives for us
+
+- In most cases, this will get you pretty close to as much speed as you'll need
+
+- But in some cases, you may require even more performance gains
+
+- In this case, it can be helpful to provide `Optim` with the analytical gradient
+
+- In one test I ran, the analytical gradient ran over .hi[3x faster] than autodiff
+
+
+---
+# How to pass an analytical gradient to Optim
+
+- The example code below re-works question 1 from PS4 (multinomial logit)
+
+.scroll-box-16[
+
+``` julia
+@views @inline function asclogit(bstart::Vector,Y::Array,X::Array,Z::Array,J::Int64,baseAlt::Int64=J,W::Array=ones(length(Y)))
+    ## error checking
+    @assert ((!isempty(X) || !isempty(Z)) &amp;&amp; !isempty(Y))    "You must supply data to the model"
+    @assert (ndims(Y)==1 &amp;&amp; size(Y,2)==1)                    "Y must be a 1-D Array"
+    @assert (minimum(Y)==1 &amp;&amp; maximum(Y)==J) "Y should contain integers numbered consecutively from 1 through J"
+    if !isempty(X)
+        @assert ndims(X)==2          "X must be a 2-dimensional matrix"
+        @assert size(X,1)==size(Y,1) "The 1st dimension of X should equal the number of observations in Y"
+    end
+    if !isempty(Z)
+        @assert ndims(Z)==3          "Z must be a 3-dimensional tensor"
+        @assert size(Z,1)==size(Y,1) "The 1st dimension of Z should equal the number of observations in Y"
+        @assert size(Z,3)==J         "The 3rd dimension of Z should equal the number of choice alternatives"
+    end
+
+    K1 = size(X,2)
+    K2 = size(Z,2)
+    jdx = setdiff(1:J,baseAlt)
+
+    function f(b)
+        T = promote_type(promote_type(promote_type(eltype(X),eltype(b)),eltype(Z)),eltype(W))
+        num   = zeros(T,size(Y))
+        dem   = zeros(T,size(Y))
+        temp  = zeros(T,size(Y))
+        numer =  ones(T,size(Y,1),J)
+        P     = zeros(T,size(Y,1),J)
+        ℓ     =  zero(T)
+        b2 = b[K1*(J-1)+1:K1*(J-1)+K2]
+
+        k = 1
+        for j in 1:J
+            if j != baseAlt
+                temp       .= X*b[(k-1)*K1+1:k*K1] .+ (Z[:,:,j].-Z[:,:,baseAlt])*b2
+                num        .= (Y.==j).*temp.+num
+                dem        .+= exp.(temp)
+                numer[:,j] .=  exp.(temp)
+                k += 1
+            end
+        end
+        dem.+=1
+        P   .=numer./(1 .+ sum(numer;dims=2))
+
+        ℓ = -W'*(num.-log.(dem))
+    end
+
+    function g!(G,b)
+        T     = promote_type(promote_type(promote_type(eltype(X),eltype(b)),eltype(Z)),eltype(W))
+        numer = zeros(T,size(Y,1),J)
+        P     = zeros(T,size(Y,1),J)
+        numg  = zeros(T,K2)
+        demg  = zeros(T,K2)
+        b2    = b[K1*(J-1)+1:K1*(J-1)+K2]
+
+        G .= T(0)
+        k = 1
+        for j in 1:J
+            if j != baseAlt
+                numer[:,j] .= exp.( X*b[(k-1)*K1+1:k*K1] .+ (Z[:,:,j].-Z[:,:,baseAlt])*b2 )
+                k += 1
+            end
+        end
+        P   .=numer./(1 .+ sum(numer;dims=2))
+
+        k = 1
+        for j in 1:J
+            if j != baseAlt
+                G[(k-1)*K1+1:k*K1] .= -X'*(W.*((Y.==j).-P[:,j]))
+                k += 1
+            end
+        end
+
+        for j in 1:J
+            if j != baseAlt
+                numg .-= (Z[:,:,j].-Z[:,:,baseAlt])'*(W.*(Y.==j))
+                demg .-= (Z[:,:,j].-Z[:,:,baseAlt])'*(W.*P[:,j])
+            end
+        end
+        G[K1*(J-1)+1:K1*(J-1)+K2] .= numg.-demg
+        return nothing
+    end
+
+    td = TwiceDifferentiable(f, g!, bstart, autodiff = :forwarddiff)
+    rs = optimize(td, bstart, LBFGS(; linesearch = LineSearches.BackTracking()), Optim.Options(iterations=100_000,g_tol=1e-8,f_tol=1e-8,x_tol=1e-8,show_trace=true))
+    β  = Optim.minimizer(rs)
+    ℓ  = Optim.minimum(rs)*(-1)
+    H  = Optim.hessian!(td, β)
+    g  = Optim.gradient!(td, β)
+    se = sqrt.(diag(inv(H)))
+
+    return β,se,ℓ,g
+end
+
+url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2021/master/ProblemSets/PS4-mixture/nlsw88t.csv"
+dff = CSV.read(HTTP.get(url).body, DataFrame)
+XX  = [dff.age dff.white dff.collgrad]
+ZZ  = cat(dff.elnwage1, dff.elnwage2, dff.elnwage3, dff.elnwage4,
+         dff.elnwage5, dff.elnwage6, dff.elnwage7, dff.elnwage8; dims=3)
+yy  = dff.occ_code
+J   = 8
+startvals = [2*rand(7*size(XX,2)).-1; .1]
+β,se,ℓ,g = asclogit(startvals,yy,XX,ZZ,J,J,ones(length(yy)))
+dfr = DataFrame(β=β,se=se)
+@show dfr
+```
+]
+
+---
+# Solving for equilibria using a contraction mapping
+
+- In many instances, we may want to solve for an equilibrium
+
+- This is especially common in IO applications, where firms interact strategically
+
+- The goal is to estimate preference parameters consistent with the equilibrium
+
+- This would typically involve some kind of a contraction mapping:
+
+    - Take a guess at the parameter values
+    
+    - Conditional on the parameter values, solve for the equilibrium
+    
+    - Update the parameter values, re-solve for the equilibrium, ...
+
+---
+# Solving for equilibria using MPEC
+
+- An alternative approach to solving for equilibria is MPEC
+
+- .hi[MPEC:] Mathematical Programming with Equilibrium Constraints
+
+- With MPEC, we re-cast the equilibrium as a set of optimization constraints
+
+- This reduces the need to solve for a fixed point
+
+- Typically the estimation converges much faster
+
+    - because the optimizer sees the constraints and makes "smarter" guesses 
+
+---
+# MPEC in the Rust bus engine problem
+
+- An alternative approach to solving for equilibria is MPEC
+
+- Su and Judd (2012) compare MPEC with NFXP in the Rust (1987) model
+
+- They show that MPEC converges about .hi[800x faster]
+
+---
+# MPEC example: Cournot oligopoly
+
+- `JuMP`, with an add-on package (`Complementarity.jl`), supports MPEC
+
+- Example: `\(N\)`-firm symmetric Cournot monopolistic competition
+
+- Each firm `\(i\)` chooses output `\(q_i\)` to maximize profit, subject to `\(q_{-i}\)` (others' output decisions)
+
+- Marginal cost `\(c_i\)` is assumed to be constant and equal across all firms
+
+- Market demand is given by `\(P(Q) = a - bQ\)`
+
+- This problem is easy to solve analytically:
+`\begin{align*}
+q^* &amp;= \frac{a-c}{b(N+1)}, &amp; P^* &amp;= \frac{a+Nc}{N+1}
+\end{align*}`
+
+---
+# Cournot oligopoly using JuMP
+
+- The code for solving this in JuMP is below
+
+- We could easily generalize this to non-linear demand, asymmetric `\(c_i\)`, etc.
+
+.scroll-box-12[
+
+``` julia
+using JuMP, Ipopt, Complementarity
+# simplified version of cournot demo (linear demand, symmetric costs)
+function cournot_symm(; N = 7, mc = 20, a=100, b=2, L = 1000)
+    c = mc*ones(N)
+    m = Model(Ipopt.Optimizer)
+    @variable(m, 0 &lt;= x &lt;= L) # firm 1 output
+    @variable(m, y[1:N-1])    # other firms' output
+    @variable(m, l[1:N-1])    # legrange multipliers
+    @variable(m, Q &gt;= 0)      # total market output
+    @constraint(m, Q == x+sum(y[i] for i in 1:N-1))
+    @constraint(m, x == y[1])
+    @NLobjective(m, Min, c[1]*x - x*( a - b*Q ) ) # firm 1's objective
+    @NLconstraint(m, cnstr[i=1:N-1], 0 == ( c[i+1] ) - ( a - b*Q ) - y[i]*( -b ) - l[i] ) # other firms' FOCs
+    for i in 1:N-1
+        @complements(m, l[i], 0 &lt;= y[i] &lt;= L, smooth)
+    end
+    optimize!(m)
+    @show getobjectivevalue(m)
+    @show getvalue.(x)
+    @show getvalue.(y)
+    @show getvalue.(l)
+    @show getvalue.(Q)
+    @show P = a - b*getvalue.(Q)
+    @assert isapprox(getvalue.(x), (a-mc)/(b*(N+1)), atol=1e-4)
+    return P
+end
+P7  = cournot_symm()
+P17 = cournot_symm(L=17)
+```
+]
+
+
+
+---
+# References
+Ackerberg, D. A. (2003). "Advertising, Learning, and Consumer Choice in Experience Good
+Markets: An Empirical Examination". In: _International Economic Review_ 44.3, pp.
+1007-1040. DOI:
+[10.1111/1468-2354.t01-2-00098](https://doi.org/10.1111%2F1468-2354.t01-2-00098).
+
+Adams, R. P. (2018). _Model Selection and Cross Validation_. Lecture Notes. Princeton
+University. URL:
+[https://www.cs.princeton.edu/courses/archive/fall18/cos324/files/model-selection.pdf](https://www.cs.princeton.edu/courses/archive/fall18/cos324/files/model-selection.pdf).
+
+Ahlfeldt, G. M., S. J. Redding, D. M. Sturm, et al. (2015). "The Economics of Density:
+Evidence From the Berlin Wall". In: _Econometrica_ 83.6, pp. 2127-2189. DOI:
+[10.3982/ECTA10876](https://doi.org/10.3982%2FECTA10876).
+
+Altonji, J. G., T. E. Elder, and C. R. Taber (2005). "Selection on Observed and Unobserved
+Variables: Assessing the Effectiveness of Catholic Schools". In: _Journal of Political
+Economy_ 113.1, pp. 151-184. DOI: [10.1086/426036](https://doi.org/10.1086%2F426036).
+
+Altonji, J. G. and C. R. Pierret (2001). "Employer Learning and Statistical
+Discrimination". In: _Quarterly Journal of Economics_ 116.1, pp. 313-350. DOI:
+[10.1162/003355301556329](https://doi.org/10.1162%2F003355301556329).
+
+Angrist, J. D. and A. B. Krueger (1991). "Does Compulsory School Attendance Affect
+Schooling and Earnings?" In: _Quarterly Journal of Economics_ 106.4, pp. 979-1014. DOI:
+[10.2307/2937954](https://doi.org/10.2307%2F2937954).
+
+Angrist, J. D. and J. Pischke (2009). _Mostly Harmless Econometrics: An Empiricist's
+Companion_. Princeton University Press. ISBN: 0691120358.
+
+Arcidiacono, P. (2004). "Ability Sorting and the Returns to College Major". In: _Journal
+of Econometrics_ 121, pp. 343-375. DOI:
+[10.1016/j.jeconom.2003.10.010](https://doi.org/10.1016%2Fj.jeconom.2003.10.010).
+
+Arcidiacono, P., E. Aucejo, A. Maurel, et al. (2016). _College Attrition and the Dynamics
+of Information Revelation_. Working Paper. Duke University. URL:
+[https://tyleransom.github.io/research/CollegeDropout2016May31.pdf](https://tyleransom.github.io/research/CollegeDropout2016May31.pdf).
+
+Arcidiacono, P., E. Aucejo, A. Maurel, et al. (2025). "College Attrition and the Dynamics
+of Information Revelation". In: _Journal of Political Economy_ 133.1. DOI:
+[10.1086/732526](https://doi.org/10.1086%2F732526).
+
+Arcidiacono, P. and J. B. Jones (2003). "Finite Mixture Distributions, Sequential
+Likelihood and the EM Algorithm". In: _Econometrica_ 71.3, pp. 933-946. DOI:
+[10.1111/1468-0262.00431](https://doi.org/10.1111%2F1468-0262.00431).
+
+Arcidiacono, P., J. Kinsler, and T. Ransom (2022b). "Asian American Discrimination in
+Harvard Admissions". In: _European Economic Review_ 144, p. 104079. DOI:
+[10.1016/j.euroecorev.2022.104079](https://doi.org/10.1016%2Fj.euroecorev.2022.104079).
+
+Arcidiacono, P., J. Kinsler, and T. Ransom (2022a). "Legacy and Athlete Preferences at
+Harvard". In: _Journal of Labor Economics_ 40.1, pp. 133-156. DOI:
+[10.1086/713744](https://doi.org/10.1086%2F713744).
+
+Arcidiacono, P. and R. A. Miller (2011). "Conditional Choice Probability Estimation of
+Dynamic Discrete Choice Models With Unobserved Heterogeneity". In: _Econometrica_ 79.6,
+pp. 1823-1867. DOI: [10.3982/ECTA7743](https://doi.org/10.3982%2FECTA7743).
+
+Arroyo Marioli, F., F. Bullano, S. Kucinskas, et al. (2020). _Tracking R of COVID-19: A
+New Real-Time Estimation Using the Kalman Filter_. Working Paper. medRxiv. DOI:
+[10.1101/2020.04.19.20071886](https://doi.org/10.1101%2F2020.04.19.20071886).
+
+Ashworth, J., V. J. Hotz, A. Maurel, et al. (2021). "Changes across Cohorts in Wage
+Returns to Schooling and Early Work Experiences". In: _Journal of Labor Economics_ 39.4,
+pp. 931-964. DOI: [10.1086/711851](https://doi.org/10.1086%2F711851).
+
+Attanasio, O. P., C. Meghir, and A. Santiago (2011). "Education Choices in Mexico: Using a
+Structural Model and a Randomized Experiment to Evaluate PROGRESA". In: _Review of
+Economic Studies_ 79.1, pp. 37-66. DOI:
+[10.1093/restud/rdr015](https://doi.org/10.1093%2Frestud%2Frdr015).
+
+Aucejo, E. M. and J. James (2019). "Catching Up to Girls: Understanding the Gender
+Imbalance in Educational Attainment Within Race". In: _Journal of Applied Econometrics_
+34.4, pp. 502-525. DOI: [10.1002/jae.2699](https://doi.org/10.1002%2Fjae.2699).
+
+Baragatti, M., A. Grimaud, and D. Pommeret (2013). "Likelihood-free Parallel Tempering".
+In: _Statistics and Computing_ 23.4, pp. 535-549. DOI: [
+10.1007/s11222-012-9328-6](https://doi.org/%2010.1007%2Fs11222-012-9328-6).
+
+Bayer, P., R. McMillan, A. Murphy, et al. (2016). "A Dynamic Model of Demand for Houses
+and Neighborhoods". In: _Econometrica_ 84.3, pp. 893-942. DOI:
+[10.3982/ECTA10170](https://doi.org/10.3982%2FECTA10170).
+
+Begg, C. B. and R. Gray (1984). "Calculation of Polychotomous Logistic Regression
+Parameters Using Individualized Regressions". In: _Biometrika_ 71.1, pp. 11-18. DOI:
+[10.1093/biomet/71.1.11](https://doi.org/10.1093%2Fbiomet%2F71.1.11).
+
+Beggs, S. D., N. S. Cardell, and J. Hausman (1981). "Assessing the Potential Demand for
+Electric Cars". In: _Journal of Econometrics_ 17.1, pp. 1-19. DOI:
+[10.1016/0304-4076(81)90056-7](https://doi.org/10.1016%2F0304-4076%2881%2990056-7).
+
+Berry, S., J. Levinsohn, and A. Pakes (1995). "Automobile Prices in Market Equilibrium".
+In: _Econometrica_ 63.4, pp. 841-890. URL:
+[http://www.jstor.org/stable/2171802](http://www.jstor.org/stable/2171802).
+
+Blass, A. A., S. Lach, and C. F. Manski (2010). "Using Elicited Choice Probabilities to
+Estimate Random Utility Models: Preferences for Electricity Reliability". In:
+_International Economic Review_ 51.2, pp. 421-440. DOI:
+[10.1111/j.1468-2354.2010.00586.x](https://doi.org/10.1111%2Fj.1468-2354.2010.00586.x).
+
+Blundell, R. (2010). "Comments on: ``Structural vs. Atheoretic Approaches to
+Econometrics'' by Michael Keane". In: _Journal of Econometrics_ 156.1, pp. 25-26. DOI:
+[10.1016/j.jeconom.2009.09.005](https://doi.org/10.1016%2Fj.jeconom.2009.09.005).
+
+Bresnahan, T. F., S. Stern, and M. Trajtenberg (1997). "Market Segmentation and the
+Sources of Rents from Innovation: Personal Computers in the Late 1980s". In: _The RAND
+Journal of Economics_ 28.0, pp. S17-S44. DOI:
+[10.2307/3087454](https://doi.org/10.2307%2F3087454).
+
+Brien, M. J., L. A. Lillard, and S. Stern (2006). "Cohabitation, Marriage, and Divorce in
+a Model of Match Quality". In: _International Economic Review_ 47.2, pp. 451-494. DOI:
+[10.1111/j.1468-2354.2006.00385.x](https://doi.org/10.1111%2Fj.1468-2354.2006.00385.x).
+
+Card, D. (1995). "Using Geographic Variation in College Proximity to Estimate the Return
+to Schooling". In: _Aspects of Labor Market Behaviour: Essays in Honour of John
+Vanderkamp_. Ed. by L. N. Christofides, E. K. Grant and R. Swidinsky. Toronto: University
+of Toronto Press.
+
+Cardell, N. S. (1997). "Variance Components Structures for the Extreme-Value and Logistic
+Distributions with Application to Models of Heterogeneity". In: _Econometric Theory_ 13.2,
+pp. 185-213. URL:
+[https://www.jstor.org/stable/3532724](https://www.jstor.org/stable/3532724).
+
+Caucutt, E. M., L. Lochner, J. Mullins, et al. (2020). _Child Skill Production: Accounting
+for Parental and Market-Based Time and Goods Investments_. Working Paper 27838. National
+Bureau of Economic Research. DOI: [10.3386/w27838](https://doi.org/10.3386%2Fw27838).
+
+Chen, X., H. Hong, and D. Nekipelov (2011). "Nonlinear Models of Measurement Errors". In:
+_Journal of Economic Literature_ 49.4, pp. 901-937. DOI:
+[10.1257/jel.49.4.901](https://doi.org/10.1257%2Fjel.49.4.901).
+
+Chintagunta, P. K. (1992). "Estimating a Multinomial Probit Model of Brand Choice Using
+the Method of Simulated Moments". In: _Marketing Science_ 11.4, pp. 386-407. DOI:
+[10.1287/mksc.11.4.386](https://doi.org/10.1287%2Fmksc.11.4.386).
+
+Cinelli, C. and C. Hazlett (2020). "Making Sense of Sensitivity: Extending Omitted
+Variable Bias". In: _Journal of the Royal Statistical Society: Series B (Statistical
+Methodology)_ 82.1, pp. 39-67. DOI:
+[10.1111/rssb.12348](https://doi.org/10.1111%2Frssb.12348).
+
+Coate, P. and K. Mangum (2019). _Fast Locations and Slowing Labor Mobility_. Working Paper
+19-49. Federal Reserve Bank of Philadelphia.
+
+Cunha, F., J. J. Heckman, and S. M. Schennach (2010). "Estimating the Technology of
+Cognitive and Noncognitive Skill Formation". In: _Econometrica_ 78.3, pp. 883-931. DOI:
+[10.3982/ECTA6551](https://doi.org/10.3982%2FECTA6551).
+
+Cunningham, S. (2021). _Causal Inference: The Mixtape_. Yale University Press. URL:
+[https://www.scunning.com/causalinference_norap.pdf](https://www.scunning.com/causalinference_norap.pdf).
+
+Delavande, A. and C. F. Manski (2015). "Using Elicited Choice Probabilities in
+Hypothetical Elections to Study Decisions to Vote". In: _Electoral Studies_ 38, pp. 28-37.
+DOI: [10.1016/j.electstud.2015.01.006](https://doi.org/10.1016%2Fj.electstud.2015.01.006).
+
+Delavande, A. and B. Zafar (2019). "University Choice: The Role of Expected Earnings,
+Nonpecuniary Outcomes, and Financial Constraints". In: _Journal of Political Economy_
+127.5, pp. 2343-2393. DOI: [10.1086/701808](https://doi.org/10.1086%2F701808).
+
+Diegert, P., M. A. Masten, and A. Poirier (2025). _Assessing Omitted Variable Bias when
+the Controls are Endogenous_. arXiv. DOI:
+[10.48550/ARXIV.2206.02303](https://doi.org/10.48550%2FARXIV.2206.02303).
+
+Erdem, T. and M. P. Keane (1996). "Decision-Making under Uncertainty: Capturing Dynamic
+Brand Choice Processes in Turbulent Consumer Goods Markets". In: _Marketing Science_ 15.1,
+pp. 1-20. DOI: [10.1287/mksc.15.1.1](https://doi.org/10.1287%2Fmksc.15.1.1).
+
+Evans, R. W. (2018). _Simulated Method of Moments (SMM) Estimation_. QuantEcon Note.
+University of Chicago. URL:
+[https://notes.quantecon.org/submission/5b3db2ceb9eab00015b89f93](https://notes.quantecon.org/submission/5b3db2ceb9eab00015b89f93).
+
+Farber, H. S. and R. Gibbons (1996). "Learning and Wage Dynamics". In: _Quarterly Journal
+of Economics_ 111.4, pp. 1007-1047. DOI:
+[10.2307/2946706](https://doi.org/10.2307%2F2946706).
+
+Fu, C., N. Grau, and J. Rivera (2020). _Wandering Astray: Teenagers' Choices of Schooling
+and Crime_. Working Paper. University of Wisconsin-Madison. URL:
+[https://www.ssc.wisc.edu/~cfu/wander.pdf](https://www.ssc.wisc.edu/~cfu/wander.pdf).
+
+Gillingham, K., F. Iskhakov, A. Munk-Nielsen, et al. (2022). "Equilibrium Trade in
+Automobiles". In: _Journal of Political Economy_. DOI:
+[10.1086/720463](https://doi.org/10.1086%2F720463).
+
+Haile, P. (2019). _``Structural vs. Reduced Form'' Language and Models in Empirical
+Economics_. Lecture Slides. Yale University. URL:
+[http://www.econ.yale.edu/~pah29/intro.pdf](http://www.econ.yale.edu/~pah29/intro.pdf).
+
+Haile, P. (2024). _Models, Measurement, and the Language of Empirical Economics_. Lecture
+Slides. Yale University. URL:
+[https://www.dropbox.com/s/8kwtwn30dyac18s/intro.pdf](https://www.dropbox.com/s/8kwtwn30dyac18s/intro.pdf).
+
+Heckman, J. J., J. Stixrud, and S. Urzua (2006). "The Effects of Cognitive and
+Noncognitive Abilities on Labor Market Outcomes and Social Behavior". In: _Journal of
+Labor Economics_ 24.3, pp. 411-482. DOI:
+[10.1086/504455](https://doi.org/10.1086%2F504455).
+
+Hotz, V. J. and R. A. Miller (1993). "Conditional Choice Probabilities and the Estimation
+of Dynamic Models". In: _The Review of Economic Studies_ 60.3, pp. 497-529. DOI:
+[10.2307/2298122](https://doi.org/10.2307%2F2298122).
+
+Hurwicz, L. (1950). "Generalization of the Concept of Identification". In: _Statistical
+Inference in Dynamic Economic Models_. Hoboken, NJ: John Wiley and Sons, pp. 245-257.
+
+Ishimaru, S. (2022). _Geographic Mobility of Youth and Spatial Gaps in Local College and
+Labor Market Opportunities_. Working Paper. Hitotsubashi University.
+
+James, J. (2011). _Ability Matching and Occupational Choice_. Working Paper 11-25. Federal
+Reserve Bank of Cleveland.
+
+James, J. (2017). "MM Algorithm for General Mixed Multinomial Logit Models". In: _Journal
+of Applied Econometrics_ 32.4, pp. 841-857. DOI:
+[10.1002/jae.2532](https://doi.org/10.1002%2Fjae.2532).
+
+Jin, H. and H. Shen (2020). "Foreign Asset Accumulation Among Emerging Market Economies: A
+Case for Coordination". In: _Review of Economic Dynamics_ 35.1, pp. 54-73. DOI:
+[10.1016/j.red.2019.04.006](https://doi.org/10.1016%2Fj.red.2019.04.006).
+
+Keane, M. P. (2010). "Structural vs. Atheoretic Approaches to Econometrics". In: _Journal
+of Econometrics_ 156.1, pp. 3-20. DOI:
+[10.1016/j.jeconom.2009.09.003](https://doi.org/10.1016%2Fj.jeconom.2009.09.003).
+
+Keane, M. P. and K. I. Wolpin (1997). "The Career Decisions of Young Men". In: _Journal of
+Political Economy_ 105.3, pp. 473-522. DOI:
+[10.1086/262080](https://doi.org/10.1086%2F262080).
+
+Koopmans, T. C. and O. Reiersol (1950). "The Identification of Structural
+Characteristics". In: _The Annals of Mathematical Statistics_ 21.2, pp. 165-181. URL:
+[http://www.jstor.org/stable/2236899](http://www.jstor.org/stable/2236899).
+
+Kosar, G., T. Ransom, and W. van der Klaauw (2022). "Understanding Migration Aversion
+Using Elicited Counterfactual Choice Probabilities". In: _Journal of Econometrics_ 231.1,
+pp. 123-147. DOI:
+[10.1016/j.jeconom.2020.07.056](https://doi.org/10.1016%2Fj.jeconom.2020.07.056).
+
+Krauth, B. (2016). "Bounding a Linear Causal Effect Using Relative Correlation
+Restrictions". In: _Journal of Econometric Methods_ 5.1, pp. 117-141. DOI:
+[10.1515/jem-2013-0013](https://doi.org/10.1515%2Fjem-2013-0013).
+
+Lang, K. and M. D. Palacios (2018). _The Determinants of Teachers' Occupational Choice_.
+Working Paper 24883. National Bureau of Economic Research. DOI:
+[10.3386/w24883](https://doi.org/10.3386%2Fw24883).
+
+Lee, D. S., J. McCrary, M. J. Moreira, et al. (2020). _Valid t-ratio Inference for IV_.
+Working Paper. arXiv. URL:
+[https://arxiv.org/abs/2010.05058](https://arxiv.org/abs/2010.05058).
+
+Lewbel, A. (2019). "The Identification Zoo: Meanings of Identification in Econometrics".
+In: _Journal of Economic Literature_ 57.4, pp. 835-903. DOI:
+[10.1257/jel.20181361](https://doi.org/10.1257%2Fjel.20181361).
+
+Mahoney, N. (2022). "Principles for Combining Descriptive and Model-Based Analysis in
+Applied Microeconomics Research". In: _Journal of Economic Perspectives_ 36.3, pp. 211-22.
+DOI: [10.1257/jep.36.3.211](https://doi.org/10.1257%2Fjep.36.3.211).
+
+McFadden, D. (1978). "Modelling the Choice of Residential Location". In: _Spatial
+Interaction Theory and Planning Models_. Ed. by A. Karlqvist, L. Lundqvist, F. Snickers
+and J. W. Weibull. Amsterdam: North Holland, pp. 75-96.
+
+McFadden, D. (1989). "A Method of Simulated Moments for Estimation of Discrete Response
+Models Without Numerical Integration". In: _Econometrica_ 57.5, pp. 995-1026. DOI:
+[10.2307/1913621](https://doi.org/10.2307%2F1913621). URL:
+[http://www.jstor.org/stable/1913621](http://www.jstor.org/stable/1913621).
+
+Mellon, J. (2020). _Rain, Rain, Go Away: 137 Potential Exclusion-Restriction Violations
+for Studies Using Weather as an Instrumental Variable_. Working Paper. University of
+Manchester. URL:
+[https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3715610](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3715610).
+
+Miller, R. A. (1984). "Job Matching and Occupational Choice". In: _Journal of Political
+Economy_ 92.6, pp. 1086-1120. DOI: [10.1086/261276](https://doi.org/10.1086%2F261276).
+
+Mincer, J. (1974). _Schooling, Experience and Earnings_. New York: Columbia University
+Press for National Bureau of Economic Research.
+
+Ost, B., W. Pan, and D. Webber (2018). "The Returns to College Persistence for Marginal
+Students: Regression Discontinuity Evidence from University Dismissal Policies". In:
+_Journal of Labor Economics_ 36.3, pp. 779-805. DOI:
+[10.1086/696204](https://doi.org/10.1086%2F696204).
+
+Oster, E. (2019). "Unobservable Selection and Coefficient Stability: Theory and Evidence".
+In: _Journal of Business &amp; Economic Statistics_ 37.2, pp. 187-204. DOI:
+[10.1080/07350015.2016.1227711](https://doi.org/10.1080%2F07350015.2016.1227711).
+
+Pischke, S. (2007). _Lecture Notes on Measurement Error_. Lecture Notes. London School of
+Economics. URL:
+[http://econ.lse.ac.uk/staff/spischke/ec524/Merr_new.pdf](http://econ.lse.ac.uk/staff/spischke/ec524/Merr_new.pdf).
+
+Ransom, M. R. and T. Ransom (2018). "Do High School Sports Build or Reveal Character?
+Bounding Causal Estimates of Sports Participation". In: _Economics of Education Review_
+64, pp. 75-89. DOI:
+[10.1016/j.econedurev.2018.04.002](https://doi.org/10.1016%2Fj.econedurev.2018.04.002).
+
+Ransom, T. (2022). "Labor Market Frictions and Moving Costs of the Employed and
+Unemployed". In: _Journal of Human Resources_ 57.S, pp. S137-S166. DOI:
+[10.3368/jhr.monopsony.0219-10013R2](https://doi.org/10.3368%2Fjhr.monopsony.0219-10013R2).
+
+Rudik, I. (2020). "Optimal Climate Policy When Damages Are Unknown". In: _American
+Economic Journal: Economic Policy_ 12.2, pp. 340-373. DOI:
+[10.1257/pol.20160541](https://doi.org/10.1257%2Fpol.20160541).
+
+Rust, J. (1987). "Optimal Replacement of GMC Bus Engines: An Empirical Model of Harold
+Zurcher". In: _Econometrica_ 55.5, pp. 999-1033. URL:
+[http://www.jstor.org/stable/1911259](http://www.jstor.org/stable/1911259).
+
+Shalizi, C. R. (2019). _Advanced Data Analysis from an Elementary Point of View_.
+Cambridge University Press. URL:
+[http://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/ADAfaEPoV.pdf](http://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/ADAfaEPoV.pdf).
+
+Smith Jr., A. A. (2008). "Indirect Inference". In: _The New Palgrave Dictionary of
+Economics_. Ed. by S. N. Durlauf and L. E. Blume. Vol. 1-8. London: Palgrave Macmillan.
+DOI: [10.1007/978-1-349-58802-2](https://doi.org/10.1007%2F978-1-349-58802-2). URL:
+[http://www.econ.yale.edu/smith/palgrave7.pdf](http://www.econ.yale.edu/smith/palgrave7.pdf).
+
+Stinebrickner, R. and T. Stinebrickner (2014a). "Academic Performance and College Dropout:
+Using Longitudinal Expectations Data to Estimate a Learning Model". In: _Journal of Labor
+Economics_ 32.3, pp. 601-644. DOI: [10.1086/675308](https://doi.org/10.1086%2F675308).
+
+Stinebrickner, R. and T. R. Stinebrickner (2014b). "A Major in Science? Initial Beliefs
+and Final Outcomes for College Major and Dropout". In: _Review of Economic Studies_ 81.1,
+pp. 426-472. DOI: [10.1093/restud/rdt025](https://doi.org/10.1093%2Frestud%2Frdt025).
+
+Su, C. and K. L. Judd (2012). "Constrained Optimization Approaches to Estimation of
+Structural Models". In: _Econometrica_ 80.5, pp. 2213-2230. DOI:
+[10.3982/ECTA7925](https://doi.org/10.3982%2FECTA7925).
+
+Train, K. (2009). _Discrete Choice Methods with Simulation_. 2nd ed. Cambridge; New York:
+Cambridge University Press. ISBN: 9780521766555.
+
+Wiswall, M. and B. Zafar (2018). "Preference for the Workplace, Investment in Human
+Capital, and Gender". In: _Quarterly Journal of Economics_ 133.1, pp. 457-507. DOI:
+[10.1093/qje/qjx035](https://doi.org/10.1093%2Fqje%2Fqjx035).
+
+Young, A. (2020). _Consistency without Inference: Instrumental Variables in Practical
+Application_. Working Paper. London School of Economics.
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+  "highlightStyle": "github",
+  "highlightLines": true,
+  "countIncrementalSlides": false,
+  "ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

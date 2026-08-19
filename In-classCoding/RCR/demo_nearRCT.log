@@ -1,0 +1,540 @@
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\rans0001\Dropbox\GitHubReposTeaching\phd-metrics-fall-2025\In-classCoding\RCR\demo_nearRCT.log
+  log type:  text
+ opened on:  20 Nov 2025, 08:46:19
+
+. set seed 12345
+
+. set obs 100000
+Number of observations (_N) was 0, now 100,000.
+
+. 
+. * ---- True parameters ----
+. scalar y_int = 2.5
+
+. scalar alpha_true = 0.5
+
+. scalar f_load = 0.25
+
+. scalar unique_var = 0.5
+
+. scalar y_noise_var = 1.0
+
+. scalar d_noise_var = 0.1
+
+. scalar d_load = 0.01
+
+. scalar y_load = 0.5
+
+. 
+. * ---- Latent factor for correlation ----
+. gen F = rnormal()
+
+. 
+. * ---- Generate 5 W's and 5 X's, correlated via F ----
+. forvalues i=1/5 {
+  2.     gen W`i' = f_load*F + sqrt(unique_var)*rnormal()
+  3. }
+
+. forvalues i=1/5 {
+  2.     gen X`i' = f_load*F + sqrt(unique_var)*rnormal()
+  3. }
+
+. 
+. * ---- Unobserved and observed factors ----
+. * First-stage:
+. * True d depends on both observed (X) and unobserved (W) variables
+. gen u_d = sqrt(d_noise_var)*rnormal()
+
+. gen d = d_load*X1 + d_load*X2 + d_load*X3 + d_load*X4 + d_load*X5 + ///
+>         d_load*W1 + d_load*W2 + d_load*W3 + d_load*W4 + d_load*W5 + u_d
+
+. 
+. * ---- True model: y = αd + Xβ + Wγ + noise ----
+. * Second-stage:
+. gen u_y = sqrt(y_noise_var)*rnormal()
+
+. gen y = y_int + alpha_true*d + ///
+>         y_load*X1 + y_load*X2 + y_load*X3 + y_load*X4 + y_load*X5 + ///
+>         y_load*W1 + y_load*W2 + y_load*W3 + y_load*W4 + y_load*W5 + u_y
+
+. 
+. *-------------------------------------------------------------------------------
+. * Program to calibrate rho_k's
+. *-------------------------------------------------------------------------------
+. capture program drop calc_rho_k
+
+. program define calc_rho_k
+  1.     syntax varlist(min=2) [if] [in], Treatment(varname) [NOIsily SORT]
+  2.     
+.     marksample touse
+  3.     
+.     // Separate treatment variable from covariates
+.     local covars : list varlist - treatment
+  4.     
+.     // Step 1: Run selection regression (Treatment on Controls)
+.     if "`noisily'" != "" {
+  5.         regress `treatment' `covars' if `touse'
+  6.     }
+  7.     else {
+  8.         quietly regress `treatment' `covars' if `touse'
+  9.     }
+ 10.     
+.     // Step 2: Get full predicted index
+.     tempvar full_index
+ 11.     quietly predict `full_index' if `touse', xb
+ 12.     
+.     // Step 3: Store results in temporary frame or matrices
+.     tempname results
+ 13.     matrix `results' = J(`: word count `covars'', 3, .)
+ 14.     matrix colnames `results' = coefficient sd_k rho_k
+ 15.     
+.     local i = 1
+ 16.     foreach k of local covars {
+ 17.         
+.         // Get coefficient for W_1k
+.         local pi_k = _b[`k']
+ 18.         
+.         // Calculate sqrt(Var(pi_k * W_1k)) - the numerator
+.         tempvar index_k
+ 19.         quietly gen `index_k' = `pi_k' * `k' if `touse'
+ 20.         quietly summarize `index_k' if `touse'
+ 21.         local sd_k = sqrt(r(Var))
+ 22.         
+.         // Calculate sqrt(Var(pi_-k' * W_-k)) - the denominator
+.         tempvar index_minus_k
+ 23.         quietly gen `index_minus_k' = `full_index' - `pi_k' * `k' if `touse'
+ 24.         quietly summarize `index_minus_k' if `touse'
+ 25.         local sd_minus_k = sqrt(r(Var))
+ 26.         
+.         // Calculate rho_k
+.         local rho_k = `sd_k' / `sd_minus_k'
+ 27.         
+.         // Store in matrix
+.         matrix `results'[`i', 1] = `pi_k'
+ 28.         matrix `results'[`i', 2] = `sd_k'
+ 29.         matrix `results'[`i', 3] = `rho_k'
+ 30.         
+.         // Clean up temporary variables
+.         drop `index_k' `index_minus_k'
+ 31.         
+.         local i = `i' + 1
+ 32.     }
+ 33.     
+.     // Step 4: Create dataset with results and optionally sort
+.     preserve
+ 34.     clear
+ 35.     svmat `results', names(col)
+ 36.     gen varname = ""
+ 37.     local i = 1
+ 38.     foreach k of local covars {
+ 39.         replace varname = "`k'" if _n == `i'
+ 40.         local i = `i' + 1
+ 41.     }
+ 42.     
+.     if "`sort'" != "" {
+ 43.         gsort -rho_k
+ 44.     }
+ 45.     
+.     // Step 5: Display results
+.     di ""
+ 46.     di as text "{hline 70}"
+ 47.     di as text "Rho_k Calculations: Relative Importance of Each Covariate"
+ 48.     if "`sort'" != "" {
+ 49.         di as text "(sorted by rho_k in descending order)"
+ 50.     }
+ 51.     di as text "{hline 70}"
+ 52.     di as text "Covariate" _col(30) "Coefficient" _col(45) "Rho_k"
+ 53.     di as text "{hline 70}"
+ 54.     
+.     forvalues i = 1/`=_N' {
+ 55.         local k = varname[`i']
+ 56.         local pi_k = coefficient[`i']
+ 57.         local rho_k = rho_k[`i']
+ 58.         di as text "`k'" _col(30) as result %9.4f `pi_k' _col(45) as result %9.4f `rho_k'
+ 59.     }
+ 60.     
+.     di as text "{hline 70}"
+ 61.     di as text "Note: Rho_k measures importance of variable k relative to all other"
+ 62.     di as text "      observed covariates in the selection equation."
+ 63.     di as text "      Compare breakdown point r_X^bp against these rho_k values."
+ 64.     di as text "{hline 70}"
+ 65.     di ""
+ 66.     
+.     restore
+ 67.     
+. end
+
+. 
+. 
+. *-------------------------------------------------------------------------------
+. * Analysis: short, medium, and long regressions and regsensitivity bounds
+. *-------------------------------------------------------------------------------
+. local covars X1 X2 X3 X4 X5
+
+. * basic regressions
+. regress y d       
+
+      Source |       SS           df       MS      Number of obs   =   100,000
+-------------+----------------------------------   F(1, 99998)     =   3200.99
+       Model |  12065.5819         1  12065.5819   Prob > F        =    0.0000
+    Residual |  376924.712    99,998   3.7693225   R-squared       =    0.0310
+-------------+----------------------------------   Adj R-squared   =    0.0310
+       Total |  388990.294    99,999  3.88994183   Root MSE        =    1.9415
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           d |    1.08724   .0192169    56.58   0.000     1.049575    1.124905
+       _cons |   2.505236   .0061395   408.05   0.000     2.493203    2.517269
+------------------------------------------------------------------------------
+
+. regress y d `covars'
+
+      Source |       SS           df       MS      Number of obs   =   100,000
+-------------+----------------------------------   F(6, 99993)     =  18239.78
+       Model |  203267.192         6  33877.8654   Prob > F        =    0.0000
+    Residual |  185723.101    99,993  1.85736103   R-squared       =    0.5226
+-------------+----------------------------------   Adj R-squared   =    0.5225
+       Total |  388990.294    99,999  3.88994183   Root MSE        =    1.3629
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           d |   .6766381   .0135504    49.93   0.000     .6500795    .7031967
+          X1 |   .6856821   .0058472   117.27   0.000     .6742216    .6971426
+          X2 |   .6884561   .0058785   117.11   0.000     .6769343    .6999779
+          X3 |   .6904818   .0058642   117.74   0.000      .678988    .7019756
+          X4 |   .6895672   .0058456   117.96   0.000     .6781098    .7010245
+          X5 |   .6845628   .0058587   116.85   0.000     .6730798    .6960458
+       _cons |   2.500834   .0043098   580.26   0.000     2.492386    2.509281
+------------------------------------------------------------------------------
+
+. * infeasible regression
+. regress y d `covars' W1-W5
+
+      Source |       SS           df       MS      Number of obs   =   100,000
+-------------+----------------------------------   F(11, 99988)    =  26187.73
+       Model |  288760.797        11  26250.9816   Prob > F        =    0.0000
+    Residual |  100229.496    99,988  1.00241525   R-squared       =    0.7423
+-------------+----------------------------------   Adj R-squared   =    0.7423
+       Total |  388990.294    99,999  3.88994183   Root MSE        =    1.0012
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           d |   .4986613   .0099734    50.00   0.000     .4791136    .5182091
+          X1 |   .4940429   .0043455   113.69   0.000     .4855258      .50256
+          X2 |   .5023415   .0043656   115.07   0.000     .4937851     .510898
+          X3 |   .4970642   .0043588   114.04   0.000      .488521    .5056074
+          X4 |   .5003482   .0043431   115.21   0.000     .4918359    .5088605
+          X5 |     .49985   .0043504   114.90   0.000     .4913231    .5083768
+          W1 |    .492282   .0043422   113.37   0.000     .4837714    .5007926
+          W2 |   .4980778   .0043525   114.43   0.000     .4895469    .5066087
+          W3 |   .5034306   .0043533   115.64   0.000     .4948981    .5119631
+          W4 |   .5045283   .0043557   115.83   0.000     .4959912    .5130654
+          W5 |   .4998797   .0043747   114.27   0.000     .4913053    .5084541
+       _cons |   2.499628   .0031663   789.45   0.000     2.493422    2.505834
+------------------------------------------------------------------------------
+
+. 
+. * calibrating rho_k's
+. reg d `covars'
+
+      Source |       SS           df       MS      Number of obs   =   100,000
+-------------+----------------------------------   F(5, 99994)     =    180.68
+       Model |  91.3901444         5  18.2780289   Prob > F        =    0.0000
+    Residual |  10115.5965    99,994  .101162034   R-squared       =    0.0090
+-------------+----------------------------------   Adj R-squared   =    0.0089
+       Total |  10206.9866    99,999  .102070887   Root MSE        =    .31806
+
+------------------------------------------------------------------------------
+           d | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+          X1 |   .0155327   .0013637    11.39   0.000     .0128598    .0182056
+          X2 |   .0142169   .0013712    10.37   0.000     .0115294    .0169043
+          X3 |   .0147482   .0013678    10.78   0.000     .0120673     .017429
+          X4 |   .0134595   .0013636     9.87   0.000     .0107869    .0161321
+          X5 |    .016761   .0013663    12.27   0.000     .0140831    .0194389
+       _cons |  -.0007527   .0010058    -0.75   0.454    -.0027241    .0012187
+------------------------------------------------------------------------------
+
+. calc_rho_k d `covars', t(d) noisily sort
+
+      Source |       SS           df       MS      Number of obs   =   100,000
+-------------+----------------------------------   F(5, 99994)     =    180.68
+       Model |  91.3901444         5  18.2780289   Prob > F        =    0.0000
+    Residual |  10115.5965    99,994  .101162034   R-squared       =    0.0090
+-------------+----------------------------------   Adj R-squared   =    0.0089
+       Total |  10206.9866    99,999  .102070887   Root MSE        =    .31806
+
+------------------------------------------------------------------------------
+           d | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+          X1 |   .0155327   .0013637    11.39   0.000     .0128598    .0182056
+          X2 |   .0142169   .0013712    10.37   0.000     .0115294    .0169043
+          X3 |   .0147482   .0013678    10.78   0.000     .0120673     .017429
+          X4 |   .0134595   .0013636     9.87   0.000     .0107869    .0161321
+          X5 |    .016761   .0013663    12.27   0.000     .0140831    .0194389
+       _cons |  -.0007527   .0010058    -0.75   0.454    -.0027241    .0012187
+------------------------------------------------------------------------------
+number of observations will be reset to 5
+Press any key to continue, or Break to abort
+Number of observations (_N) was 0, now 5.
+(5 missing values generated)
+variable varname was str1 now str2
+(1 real change made)
+(1 real change made)
+(1 real change made)
+(1 real change made)
+(1 real change made)
+
+----------------------------------------------------------------------
+Rho_k Calculations: Relative Importance of Each Covariate
+(sorted by rho_k in descending order)
+----------------------------------------------------------------------
+Covariate                    Coefficient    Rho_k
+----------------------------------------------------------------------
+X5                              0.0168         0.4997
+X1                              0.0155         0.4542
+X3                              0.0147         0.4233
+X2                              0.0142         0.4042
+X4                              0.0135         0.3810
+----------------------------------------------------------------------
+Note: Rho_k measures importance of variable k relative to all other
+      observed covariates in the selection equation.
+      Compare breakdown point r_X^bp against these rho_k values.
+----------------------------------------------------------------------
+
+
+. 
+. * regsensitivity
+. regsensitivity breakdown y d `covars', compare(`covars')
+
+Regression Sensitivity Analysis, Breakdown Frontier
+
+Analysis         : DMP (2022)                  Number of obs      =     100,000
+                                               Beta(short)        =       1.087
+Treatment        : d                           Beta(medium)       =       0.677
+Outcome          : y                           R2(short)          =       0.031
+                                               R2(medium)         =       0.523
+                                               Var(Y)             =       3.890
+                                               Var(X)             =       0.102
+Hypothesis       : Beta > 0                    Var(X_Residual)    =       0.101
+
+--------------------------------------------------------------------------------
+ cbar                               rxbar(Breakdown)
+--------------------------------------------------------------------------------
+ 1.000                              85.4 %
+--------------------------------------------------------------------------------
+
+. regsensitivity breakdown y d `covars', compare(`covars') cbar(0(.1)1)
+
+Regression Sensitivity Analysis, Breakdown Frontier
+
+Analysis         : DMP (2022)                  Number of obs      =     100,000
+                                               Beta(short)        =       1.087
+Treatment        : d                           Beta(medium)       =       0.677
+Outcome          : y                           R2(short)          =       0.031
+                                               R2(medium)         =       0.523
+                                               Var(Y)             =       3.890
+                                               Var(X)             =       0.102
+Hypothesis       : Beta > 0                    Var(X_Residual)    =       0.101
+
+--------------------------------------------------------------------------------
+ cbar                               rxbar(Breakdown)
+--------------------------------------------------------------------------------
+ 0.000                              164.1%
+ 0.100                              141.6%
+ 0.200                              125.5%
+ 0.300                              113.5%
+ 0.400                              104.3%
+ 0.500                              97.3 %
+ 0.600                              92.0 %
+ 0.700                              88.1 %
+ 0.800                              85.8 %
+ 0.900                              85.4 %
+ 1.000                              85.4 %
+--------------------------------------------------------------------------------
+
+. regsensitivity breakdown y d `covars', compare(`covars') rybar(=rxbar) cbar(0(.1)1)
+
+Regression Sensitivity Analysis, Breakdown Frontier
+
+Analysis         : DMP (2022)                  Number of obs      =     100,000
+                                               Beta(short)        =       1.087
+Treatment        : d                           Beta(medium)       =       0.677
+Outcome          : y                           R2(short)          =       0.031
+                                               R2(medium)         =       0.523
+                                               Var(Y)             =       3.890
+                                               Var(X)             =       0.102
+Hypothesis       : Beta > 0                    Var(X_Residual)    =       0.101
+Other Params     : rybar = rxbar
+--------------------------------------------------------------------------------
+ cbar                               rxbar(Breakdown)
+--------------------------------------------------------------------------------
+ 0.000                              164.1%
+ 0.100                              141.6%
+ 0.200                              125.5%
+ 0.300                              113.5%
+ 0.400                              104.3%
+ 0.500                              97.3 %
+ 0.600                              91.9 %
+ 0.700                              88.1 %
+ 0.800                              85.8 %
+ 0.900                              85.4 %
+ 1.000                              85.4 %
+--------------------------------------------------------------------------------
+
+. regsensitivity breakdown y d `covars', compare(`covars') rybar(=rxbar) cbar(0(.1)1) beta(0.5)
+
+Regression Sensitivity Analysis, Breakdown Frontier
+
+Analysis         : DMP (2022)                  Number of obs      =     100,000
+                                               Beta(short)        =       1.087
+Treatment        : d                           Beta(medium)       =       0.677
+Outcome          : y                           R2(short)          =       0.031
+                                               R2(medium)         =       0.523
+                                               Var(Y)             =       3.890
+                                               Var(X)             =       0.102
+Hypothesis       : Beta > .5                   Var(X_Residual)    =       0.101
+Other Params     : rybar = rxbar
+--------------------------------------------------------------------------------
+ cbar                               rxbar(Breakdown)
+--------------------------------------------------------------------------------
+ 0.000                              65.4 %
+ 0.100                              61.4 %
+ 0.200                              58.6 %
+ 0.300                              56.6 %
+ 0.400                              55.3 %
+ 0.500                              54.6 %
+ 0.600                              54.6 %
+ 0.700                              54.6 %
+ 0.800                              54.6 %
+ 0.900                              54.6 %
+ 1.000                              54.6 %
+--------------------------------------------------------------------------------
+
+. regsensitivity breakdown y d `covars', compare(`covars') rybar(=rxbar) cbar(0) beta(0.5)
+
+Regression Sensitivity Analysis, Breakdown Frontier
+
+Analysis         : DMP (2022)                  Number of obs      =     100,000
+                                               Beta(short)        =       1.087
+Treatment        : d                           Beta(medium)       =       0.677
+Outcome          : y                           R2(short)          =       0.031
+                                               R2(medium)         =       0.523
+                                               Var(Y)             =       3.890
+                                               Var(X)             =       0.102
+Hypothesis       : Beta > .5                   Var(X_Residual)    =       0.101
+Other Params     : rybar = rxbar
+--------------------------------------------------------------------------------
+ cbar                               rxbar(Breakdown)
+--------------------------------------------------------------------------------
+ 0.000                              65.4 %
+--------------------------------------------------------------------------------
+
+. //regsensitivity plot
+. regsensitivity bounds    y d `covars', compare(`covars') rybar(=rxbar) cbar(1)
+
+Regression Sensitivity Analysis, Bounds
+
+Analysis         : DMP (2022)                  Number of obs      =     100,000
+                                               Beta(short)        =       1.087
+Treatment        : d                           Beta(medium)       =       0.677
+Outcome          : y                           R2(short)          =       0.031
+                                               R2(medium)         =       0.523
+                                               Var(Y)             =       3.890
+                                               Var(X)             =       0.102
+                                               Var(X_Residual)    =       0.101
+
+Other Params     : cbar = 1
+
+--------------------------------------------------------------------------------
+ rxbar   rybar                     Beta
+--------------------------------------------------------------------------------
+ 0.000   0.000                    [ 0.6766,  0.6766 ]
+ 0.100   0.100                    [ 0.6725,  0.6808 ]
+ 0.199   0.199                    [ 0.6595,  0.6931 ]
+ 0.299   0.299                    [ 0.6360,  0.7136 ]
+ 0.398   0.398                    [ 0.5983,  0.7424 ]
+ 0.498   0.498                    [ 0.5395,  0.7793 ]
+ 0.597   0.597                    [ 0.4453,  0.8243 ]
+ 0.697   0.697                    [ 0.2816,  0.8775 ]
+ 0.796   0.796                    [ 0.1360,  0.9385 ]
+ 0.896   0.896                    [-0.1605,  1.0077 ]
+ 0.996   0.996                    [   -inf,    +inf ]
+--------------------------------------------------------------------------------
+
+. regsensitivity bounds    y d `covars', compare(`covars') rybar(=rxbar) cbar(0)
+
+Regression Sensitivity Analysis, Bounds
+
+Analysis         : DMP (2022)                  Number of obs      =     100,000
+                                               Beta(short)        =       1.087
+Treatment        : d                           Beta(medium)       =       0.677
+Outcome          : y                           R2(short)          =       0.031
+                                               R2(medium)         =       0.523
+                                               Var(Y)             =       3.890
+                                               Var(X)             =       0.102
+                                               Var(X_Residual)    =       0.101
+
+Other Params     : cbar = 0
+
+--------------------------------------------------------------------------------
+ rxbar   rybar                     Beta
+--------------------------------------------------------------------------------
+ 0.000   0.000                    [ 0.6766,  0.6766 ]
+ 1.059   1.059                    [ 0.2430,  1.1102 ]
+ 2.118   2.118                    [-0.2042,  1.5575 ]
+ 3.178   3.178                    [-0.6809,  2.0342 ]
+ 4.237   4.237                    [-1.2085,  2.5618 ]
+ 5.296   5.296                    [-1.8196,  3.1729 ]
+ 6.355   6.355                    [-2.5712,  3.9245 ]
+ 7.414   7.414                    [-3.5797,  4.9329 ]
+ 8.474   8.474                    [-5.1459,  6.4992 ]
+ 9.533   9.533                    [-8.5000,  9.8533 ]
+ 10.592  10.592                   [   -inf,    +inf ]
+--------------------------------------------------------------------------------
+
+. regsensitivity bounds    y d `covars', compare(`covars')
+
+Regression Sensitivity Analysis, Bounds
+
+Analysis         : DMP (2022)                  Number of obs      =     100,000
+                                               Beta(short)        =       1.087
+Treatment        : d                           Beta(medium)       =       0.677
+Outcome          : y                           R2(short)          =       0.031
+                                               R2(medium)         =       0.523
+                                               Var(Y)             =       3.890
+                                               Var(X)             =       0.102
+                                               Var(X_Residual)    =       0.101
+
+Hypothesis       : Beta > 0                    Breakdown Point    =        85.4%
+Other Params     : rybar = +inf, cbar = 1
+
+--------------------------------------------------------------------------------
+ rxbar                             Beta
+--------------------------------------------------------------------------------
+ 0.000                            [ 0.6766,  0.6766 ]
+ 0.100                            [ 0.6359,  0.7174 ]
+ 0.199                            [ 0.5939,  0.7594 ]
+ 0.299                            [ 0.5491,  0.8041 ]
+ 0.398                            [ 0.4997,  0.8536 ]
+ 0.498                            [ 0.4426,  0.9107 ]
+ 0.597                            [ 0.3726,  0.9807 ]
+ 0.697                            [ 0.2792,  1.0741 ]
+ 0.796                            [ 0.1360,  1.2172 ]
+ 0.896                            [-0.1605,  1.5138 ]
+ 0.996                            [   -inf,    +inf ]
+--------------------------------------------------------------------------------
+
+. //regsensitivity plot
+. 
+. log close
+      name:  <unnamed>
+       log:  C:\Users\rans0001\Dropbox\GitHubReposTeaching\phd-metrics-fall-2025\In-classCoding\RCR\demo_nearRCT.log
+  log type:  text
+ closed on:  20 Nov 2025, 08:46:55
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

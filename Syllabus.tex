@@ -1,0 +1,329 @@
+\documentclass[11pt,english]{article}
+\usepackage{mathpazo}
+\renewcommand{\familydefault}{\rmdefault}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+\usepackage{color}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{oucrimson}{RGB}{132.,22.,23.}
+\usepackage[]{threeparttable}
+\usepackage{babel}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[authoryear]{natbib}
+\usepackage[unicode=true,pdfusetitle,bookmarks=true,bookmarksnumbered=false,bookmarksopen=false,breaklinks=true,pdfborder={0 0 0},pdfborderstyle={},backref=false,colorlinks=true]{hyperref}
+\hypersetup{citecolor=oucrimson,filecolor=oucrimson,linkcolor=oucrimson,urlcolor=oucrimson}
+\usepackage{breakurl}
+
+\usepackage{pdflscape}
+
+\begin{document}
+
+\title{Econ 6343: Econometrics III}
+
+\author{University of Oklahoma\\ Fall 2026}
+\date{}
+
+\maketitle
+\section*{\rule[0.5ex]{1\columnwidth}{0.5pt}}
+
+\begin{flushleft}
+\begin{tabular}{rl}
+\textbf{Instructor:}          & Tyler Ransom                                       \\
+\textbf{Office:}              & CCD1 Room 322                                      \\
+\textbf{Email:}               & \href{mailto:ransom@ou.edu}{ransom@ou.edu}         \\
+\textbf{Office Hours:}        & Th 10:15am-11am, and by appointment                \\
+                              &                                                    \\
+\textbf{Class Location:}      & CCD1, Room 326                                     \\
+\textbf{Class Times:}         & Tue/Thu 9:00am - 10:15am                           \\
+                              &                                                    \\
+\textbf{Final Exam Location:} & CCD1, Room 326                                     \\
+\textbf{Final Exam Time:}     & Monday, December 14, 8:00am - 10:00am              \\
+%                              &                                                    \\
+%\textbf{Teaching Assistant:}  & TBA                                                \\
+%\textbf{Office:}              & TBA                                                \\
+%\textbf{Email:}               & \href{mailto:tba@ou.edu}{TBA@ou.edu}               \\
+%\textbf{Office Hours:}        & TBA                                                \\
+\end{tabular}
+\par\end{flushleft}
+
+\section*{\rule[0.5ex]{1\columnwidth}{0.5pt}}
+
+\section*{Course Description}
+
+This course is designed to help students learn the conceptual and statistical machinery that form the foundation of economic research. The course will also help students develop skills in using computer software to perform data analyses. The course will follow a ``flipped'' classroom approach, with students responsible for reviewing material ahead of time with formative work done in class.
+
+Each time we meet, we will employ the following schedule: 
+\begin{itemize}
+    \item 10 minutes Q\&A over reviewed material
+    \item 60 minutes coding workshop
+    \item 5 minutes wrap-up and look ahead to next batch of material
+\end{itemize}
+
+\section*{Student Learning Outcomes}
+By the end of the course, students should be able to do the following:
+\begin{enumerate}
+\item Explain what a structural model is
+\item Explain the strengths and weakness of structural modeling relative to other econometric methods
+\item Demonstrate proficiency during class in estimating econometric models using the Julia programming language
+\item Explain the relative strengths and weaknesses of well-known structural models
+\item Critically evaluate a structural model on the current research frontier
+\item Propose a novel research idea based on the techniques and tools covered in the course
+\end{enumerate}
+For further detail on course content, see the course schedule at the end of this document. This is a 3-credit-hour course, which means we will have about 3 hours per week of class. You should expect to spend, on average, another 4-6 hours per week outside of class on reading, preparation, assignments, and review.\footnote{From OU's ``How to Graduate a Sooner'' webpage: ``On average, you should expect to spend 2-3 hours outside of class studying for each credit hour you are taking.'' (\url{http://www.ou.edu/graduatesooner/resources/graduate_a_sooner.html})}
+
+\subsection*{Prerequisites}
+
+\begin{itemize}
+\item Econ 5213 (Advanced Econometrics) or instructor permission is required
+\item Econ 5243 (Econometrics II) is preferred
+\end{itemize}
+
+\subsection*{Textbook and other materials}
+
+Materials for the course will be assigned from the following sources:
+\begin{enumerate}
+    %\item Subscription to a frontier ``Generative AI'' Large Language Model (such as ChatGPT, Claude, or Gemini)---this costs \$20/month and will be used continuously throughout the course. As of August 2026, I recommend Claude, which is available at \url{https://claude.ai/}.
+    \item The main textbook for the first part of this course will be \emph{Discrete Choice Methods with Simulation} (2nd ed.), by Kenneth Train. The book is available for free at \url{https://eml.berkeley.edu/books/choice2.html}. You may also purchase a hard copy at any major book outlet, if you prefer. There will be no formal textbook for the remainder of the course.
+    \item Readings not originating from a textbook will come from published academic journal articles.
+    \item Videos covering course material will be posted to YouTube when they become available.
+\end{enumerate}
+
+\subsection*{Course website}
+
+Class announcements and assignments will be posted on the course website on Canvas: \url{https://canvas.ou.edu}. It is your responsibility to check the site regularly\textemdash at least every day class is held. All important announcements will be posted there.
+
+Most course materials will also be publicly posted on GitHub at \url{https://github.com/OU-PhD-Econometrics/fall-2026}.
+
+\section*{\rule[0.5ex]{1\columnwidth}{0.5pt}}
+
+\section*{Grading policies}
+
+Your grade will be determined by the following criteria:
+
+\begin{itemize}
+\item Out-of-class quizzes (40\%)
+    \begin{itemize}
+        \item Regular checks on pre-class material, either in quiz or written form. 
+    \end{itemize}
+\item In-class coding participation / completion / presentation (25\%)
+    \begin{itemize}
+        \item Based on completion of in-class coding exercises, class attendance, and an in-class presentation about your structural modeling project or your referee report.
+    \end{itemize}
+\item Written midterm exam (10\%)
+\item Referee report (10\%)
+    \begin{itemize}
+        \item You will write a referee report on an unpublished paper of your choosing. The paper must use some method we discussed in class. It may be the same paper you presented. You are encouraged to use AI models to assist you in completing this assignment.
+    \end{itemize}
+\item Structural Modeling Exercise (15\%)
+    \begin{itemize}
+        \item Choose an economic question that can be addressed through structural modeling (e.g., labor supply decisions, firm entry/exit, consumer demand, etc.) and which is ideally interesting to you and your future dissertation research
+        \item Follow Mike Keane's structural modeling process:
+        \begin{itemize}
+            \item Develop a theoretical model with clearly specified parameters of economic interest
+            \item Turn this theoretical model into an empirical model that can be taken to data
+            \item Write Julia code to simulate artificial data from your empirical model
+            \item Either implement estimation procedures or calibrate parameters and validate through simulation
+            \item Check the model's validity
+            \item Execute one or more policy experiments
+            \item Present your work in a structured report (10--15 pages) that includes:
+            \begin{itemize}
+                \item Motivation and economic question
+                \item Theoretical model, empirical specification, and key assumptions
+                \item Discussion of parameter identification
+                \item Description of simulation and estimation procedures
+                \item Simulated data description, parameter values used, and \textit{either} estimaiton validation results \textit{or} theoretical validation of calibrated parameters
+                \item Policy experiments with \textbf{simulated counterfactual results} showing quantitative changes in outcomes
+                \item Discussion of model limitations, potential extensions, and applicability to your dissertation work
+            \end{itemize}
+            \item Submit both the written report and well-documented Julia code as appendix
+        \end{itemize}
+        \item You are encouraged to use AI models to assist with conceptualizing, coding, and writing. You should expect to work with the AI model to come up with something that is interesting to you, comprehensible to you, and tractable to execute
+    \end{itemize}
+\end{itemize}
+
+\paragraph{Exam regrading}
+Exams are graded carefully and original grades are rarely changed. If you believe that a grading mistake was made on your work, you can submit a written request for a regrade to me within one week of its return. This request must contain a detailed explanation of the grading errors. Your entire exam will be regraded and the score may go up or down as a result.
+
+\paragraph{N.B.}
+I do not release end-of-course grades before they are posted by the Registrar. Federal regulations prohibit me from revealing any grade to you by email. Grades will be updated on the course website on Canvas throughout the semester.
+
+\subsection*{\rule[0.5ex]{1\columnwidth}{0.5pt}}
+
+
+\subsection*{Grading scale}
+
+All exams will be out of 138 points. At the end of the course, I will compute a final percentage grade based on component percentages of each grade category using the weights given above. I will then convert this final percentage grade into letter grades according to the following scale (where $g$ indicates your final percentage grade): 
+
+\begin{center}
+\begin{tabular}{cccc}
+90\%$\leq$ & $g$ & $\leq$100\% & A\\
+80\%$\leq$ & $g$ & $<$90\%     & B\\
+70\%$\leq$ & $g$ & $<$80\%     & C\\
+60\%$\leq$ & $g$ & $<$70\%     & D\\
+ 0\%$\leq$ & $g$ & $<$60\%     & F\\
+\end{tabular}
+\par\end{center}
+
+I reserve the right to scale upwards everyone's final percentage grades by a common factor (e.g. 1.06), but the course will not be graded on a curve, and no one's final percentage grade will be lowered.
+
+\section*{\rule[0.5ex]{1\columnwidth}{0.5pt}}
+
+\section*{Classroom etiquette}
+
+I value your presence in my class, and I want your classmates to feel the same way. You are welcome to eat/drink during class as long as food/drink is permitted in the classroom and you do not disrupt or distract others by doing so. Note that smoking is prohibited on all OU property. Please silence your cell phones, pagers, or other electronic devices during class, and do not use them in the classroom. If you need to respond to a text/social media message, or make a phone call, please leave the classroom before doing so. 
+You should bring your laptop to class (if you have one), as we will do in-class exercises almost every class period. Please do not use your laptop for work that is not directly related to what we are doing in class. Doing so has been scientifically proven to reduce your own academic performance, as well as that of your peers.\footnote{See, for example, \href{https://www.nytimes.com/2017/11/22/business/laptops-not-during-lecture-or-meeting.html}{this NYT column}.}
+
+\section*{Contacting me}
+I will always be available in-person during my office hours. Please sign up to meet with me at a link to be determined.
+
+If you ever need to email me or any other professor at OU, please follow the basic rules contained at the following link: \url{http://www.jamestierney.com/teaching/how-to-email-a-professor/}
+
+I will promise to reply to your email within 48 hours of your sending it. 
+
+\section*{Course Policies}
+
+\subsection*{Make-up Policy}
+
+All work should be turned in on the day it is due. Late work will only be accepted for university-excused absences, illnesses, or other unforeseen emergencies.
+
+\subsection*{Absences}
+
+Absences from class will only be excused for university approved reasons, illnesses, or other unforeseen emergencies.
+
+\subsection*{Generative AI Policy}
+
+This course encourages the strategic and responsible use of Generative AI (GenAI) tools such as Open AI's ChatGPT, Anthropic's Claude, Google's Gemini, and other models to enhance your learning experience. However, proper usage boundaries are essential for maintaining academic integrity and ensuring genuine skill development. \par\,\par
+
+\textbf{Permitted Uses:}
+\begin{itemize}
+    \item Summarizing research papers, articles, or other content you encounter in your readings
+    \item Condensing lengthy materials to identify key concepts and findings
+    \item Generating study guides from course materials you have already read
+    \item Assisting with coding syntax and debugging (when explicitly permitted for assignments)
+    \item Assisting with English writing style and grammar
+    \item In-class activities as directed by the instructor
+\end{itemize}
+
+\textbf{Prohibited Uses:}
+\begin{itemize}
+    \item Generating answers to quiz questions, exam questions, or assignment problems
+    \item Having AI complete your referee report or research proposal (though you may use it for summarizing sources or help with English and grammar)
+    \item Using AI to answer conceptual questions that test your understanding of econometric methods
+    \item Submitting AI-generated code as your own work for graded coding exercises
+\end{itemize}
+
+\textbf{Class Usage:} We will use GenAI tools extensively during our in-class coding activities and discussions as directed by the instructor. This guided usage will help you learn to leverage these tools effectively while developing critical evaluation skills.\par\,\par
+
+\textbf{Disclosure Requirement:} When you use GenAI tools for permitted purposes on assignments, include a brief note describing how you used the tool (e.g., ``Used Claude to summarize key findings from Smith et al. (2023)'').\par\,\par
+
+Violation of this policy constitutes academic misconduct and will be handled according to the University's academic integrity procedures outlined immediately below.
+
+\subsection*{\rule[0.5ex]{1\columnwidth}{0.5pt}}
+
+\section*{University Policies}
+
+%\subsection*{Vaccination and Masking Policy}
+
+%Vaccination is the single most effective way to mitigate the spread of COVID-19. I urge you to become fully vaccinated if you are not already.
+
+%You are also strongly encouraged to wear a mask in public areas in order to mitigate the spread of COVID-19, even if you have been vaccinated. I urge you to wear a mask while in the classroom or when visiting with me in my office.
+
+\subsection*{Academic Integrity}
+
+I do not tolerate academic misconduct, and neither does the University of Oklahoma: 
+\begin{quotation}
+``Academic misconduct is cheating. More precisely, it is any action that a student knows (or should know) will lead to the improper evaluation of academic work. If the professor does not detect it, academic misconduct defeats the purpose of academic work because you are pretending to know more or write better than you actually do. ... 
+
+``At OU, acts of plagiarism can receive institutional penalties ranging from a letter of reprimand to required coursework to expulsion. All academic misconduct offenses also receive grade penalties determined by the instructor. Grade penalties are not restricted to the value of the assignment and may be up to an F in the course. Juniors and seniors who plagiarize any significant portion of a paper should expect at least a suspension for a spring or fall semester. Under the right circumstances even freshmen and sophomores may also receive suspensions or even be expelled for plagiarism.'' 
+
+\textemdash \url{http://integrity.ou.edu/files/nine_things_you_should_know.pdf}
+\end{quotation}
+For further information on what constitutes academic misconduct, as well as how such misconduct is punished, please consult the Student Guide to Academic Dishonesty, found at the following link:\\ \url{https://integrity.ou.edu/students.html}\\
+
+I will not hesitate to fail students who do not fully comply with the University's academic misconduct policy. If you find yourself contemplating cheating, plagiarism, or other forms of academic misconduct, please come see me first. Help is available if you are struggling. I want everyone in the class to try their best and to do their own work. Please be advised that I reserve the right to utilize anti-plagiarism resources such as \emph{TurnItIn} when grading assignments.
+
+\subsection*{Mental Health Support Services}
+
+Support is available for any student experiencing mental health issues that are impacting their academic success. Students can either been seen at the University Counseling Center (UCC) located on the second floor of Goddard Health Center or receive 24/7/365 crisis support from a licensed mental health provider through \href{https://www.ou.edu/studentaffairs/resources/timelycare}{TimelyCare}. To schedule an appointment or receive more information about mental health resources at OU please call the UCC at 405-325-2911 or visit \href{https://www.ou.edu/ucc}{University Counseling Center}. The UCC is located at 620 Elm Ave., Room 201, Norman, OK 73019.
+
+\subsection*{Title IX Resources and Reporting Requirement}
+
+The University of Oklahoma faculty are committed to creating a safe learning environment for all members of our community, free from sex-based discrimination, including sexual harassment, domestic and dating violence, sexual assault, and stalking, in accordance with Title IX. There are resources available to those impacted, including: speaking with someone confidentially about your options, medical attention, counseling, reporting, academic support, and safety plans. If you have (or someone you know has) experienced any form of sex-based discrimination or violence and wish to speak with someone confidentially, please contact \href{https://www.ou.edu/advocacyandeducation/ou-advocates}{OU Advocates} (available 24/7 at 405-615-0013) or \href{http://ou.edu/ucc}{University Counseling Center} (M-F 8 a.m. to 5 p.m. at 405-325-2911).
+
+Because the University of Oklahoma is committed to the safety of you and other students, and because of our Title IX obligations, I, as well as other faculty, Graduate Assistants, and Teaching Assistants, are mandatory reporters. This means that we are obligated to report sex-based violence that has been disclosed to us to the Institutional Equity Office. This includes disclosures that occur in: class discussion, writing assignments, discussion boards, emails and during Student/Office Hours. You may also choose to report directly to the Institutional Equity Office. After a report is filed, the Title IX Coordinator will reach out to provide resources, support, and information and the reported information will remain private. For more information regarding the University's Title IX Grievance procedures, reporting, or support measures, please visit \href{https://www.ou.edu/eoo}{Institutional Equity Office} at 405-325-3546.
+
+\subsection*{Reasonable Accommodation Policy}
+
+The University of Oklahoma (OU) is committed to the goal of achieving equal educational opportunity and full educational participation for students with disabilities. If you have already established reasonable accommodations with the Accessibility and Disability Resource Center (ADRC), please log into iAdvise to request your semester accommodations as soon as possible and contact me privately, so that we have adequate time to arrange your approved academic accommodations.
+
+If you have not yet established services through ADRC, but have a documented disability and require accommodations, please complete \href{https://cm.maxient.com/reportingform.php?UnivofOklahoma&layout_id=350}{ADRC's pre-registration form} to begin the registration process. ADRC facilitates the interactive process that establishes reasonable accommodations for students at OU.  For more information on ADRC registration procedures, please review their \href{https://www.ou.edu/adrc}{website}. You may also contact them at (405)325-3852 or \href{mailto:adrc@ou.edu}{adrc@ou.edu}, or visit \url{www.ou.edu/adrc} for more information.  
+
+Note: disabilities may include, but are not limited to, mental health, chronic health, physical, vision, hearing, learning and attention disabilities, pregnancy-related. ADRC can also support students experiencing temporary medical conditions.
+
+\subsection*{Religious Observance}
+
+It is the policy of the University to excuse the absences of students that result from religious observances and to reschedule examinations and additional required classwork that may fall on religious holidays, without penalty. [\href{https://apps.hr.ou.edu/FacultyHandbook/#3.15.2}{See Faculty Handbook 3.15.2}]
+
+\subsection*{Adjustments for Pregnancy and Related Issues}
+
+Should you need modifications or adjustments to your course requirements because of pregnancy or a pregnancy-related condition, please request modifications via the \href{https://www.ou.edu/eoo/pregnancy-and-parenting}{Institutional Equity Office} website or call the Institutional Equity Office at 405/325-3546 as soon as possible. Also, see the Institutional Equity Office \href{https://www.ou.edu/content/dam/eoo/documents/faqs/faqs-pregnant-and-parenting-students.pdf}{FAQ on Pregnant and Parenting Students' Rights} for answers to commonly asked questions.
+
+\subsection*{Final Exam Preparation Period}
+
+Pre-finals week will be defined as the seven calendar days before the first day of finals. Faculty may cover new course material throughout this week. For specific provisions of the policy please refer to OU's \href{https://www.ou.edu/registrar/academic-records/academic-calendars/final-exam-schedule/final-exam-policies}{Final Exam Preparation Period policy}.
+
+\subsection*{Emergency Protocol}
+
+During an emergency, there are official university \href{https://www.ou.edu/campussafety/policy-and-procedures}{procedures} that will maximize your safety.
+
+\textbf{Severe Weather:} If you receive an OU Alert to seek refuge or hear a tornado siren that signals severe weather.
+
+\begin{enumerate}
+    \item \textit{Look} for severe weather refuge location maps located inside most OU buildings near the entrances.
+    \item \textit{Seek} refuge inside a building. Do not leave one building to seek shelter in another building that you deem safer. If outside, get into the nearest building.
+    \item \textit{Go} to the building's severe weather refuge location. If you do not know where that is, go to the lowest level possible and seek refuge in an innermost room. Avoid outside doors and windows.
+    \item \textit{Get in, Get Down, Cover Up}
+    \item \textit{Wait} for official notice to resume normal activities.
+\end{enumerate}
+
+Additional \href{https://www.ou.edu/campussafety/divisions#management}{Weather Safety Information} is available through the Department of Campus Safety.
+
+\subsection*{The University of Oklahoma Active Threat Guidance}
+
+The University of Oklahoma embraces a Run, Hide, Fight strategy for active threats on campus. This strategy is well known, widely accepted, and proven to save lives. To receive emergency campus alerts, be sure to update your contact information and preferences in the account settings section at \url{http://one.ou.edu/}.
+
+\textbf{RUN}: Running away from the threat is usually the best option. If it is safe to run, run as far away from the threat as possible. Call 911 when you are in a safe location and let them know from which OU campus you're calling from and location of active threat.
+
+\textbf{HIDE:} If running is not practical, the next best option is to hide. Lock and barricade all doors; turn off all lights; turn down your phone's volume; search for improvised weapons; hide behind solid objects and walls; and hide yourself completely and stay quiet. Remain in place until law enforcement arrives. Be patient and remain hidden.
+
+\textbf{FIGHT:} If you are unable to run or hide, the last best option is to fight. Have one or more improvised weapons with you and be prepared to attack. Attack them when they are least expecting it and hit them where it hurts most: the face (specifically eyes, nose, and ears), the throat, the diaphragm (solar plexus), and the groin.
+
+\textit{Please save OUPD's contact information in your phone.}
+
+\textbf{NORMAN} campus: \textit{For non-emergencies call (405) 325-1717. For emergencies call (405) 325-1911 or dial 911.}
+
+\textbf{TULSA} campus: \textit{For non-emergencies call (918) 660-3900. For emergencies call (918) 660-3333 or dial 911.}
+
+\subsection*{Fire Alarm/General Emergency}
+
+If you receive an OU Alert that there is danger inside or near the building, or the fire alarm inside the building activates:
+
+\begin{enumerate}
+    \item \textit{LEAVE} the building. Do not use the elevators.
+    \item \textit{KNOW} at least two building exits
+    \item \textit{ASSIST} those that may need help
+    \item \textit{PROCEED} to the emergency assembly area
+    \item \textit{ONCE safely outside, NOTIFY first responders of anyone that may still be inside building due to mobility issues.}
+    \item \textit{WAIT} for official notice before attempting to re-enter the building.
+\end{enumerate}
+
+\href{https://vimeo.com/125093634}{\textit{OU Fire Safety on Campus}}
+
+\subsection*{\rule[0.5ex]{1\columnwidth}{0.5pt}}
+
+\section*{Class Schedule}
+The course schedule is posted at \url{https://github.com/OU-PhD-Econometrics/fall-2026/blob/master/README.md} and will be updated regularly; please check there for the most recent version.
+\end{document}

@@ -1,0 +1,190 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{In-Class Activity: Residential Mobility Preferences\\\large{Quantile Regression and Bootstrap Inference}}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Objective}
+
+Estimate residential mobility preferences using stated-choice experimental data. Learn to: (1) estimate quantile regressions with panel data, (2) compute bootstrapped standard errors with clustering, and (3) calculate willingness-to-pay measures with uncertainty quantification.
+
+\section{Background}
+
+This exercise uses data from a Survey of Consumer Expectations (SCE) experiment where respondents evaluated hypothetical residential moves. Each scenario presents three alternatives with varying attributes (housing costs, crime, distance, etc.). The dependent variable is the \textbf{log odds ratio}:
+
+$$\text{ratio}_{ij} = \ln\left(\frac{p_{ij}}{p_{i,\text{stay}}}\right)$$
+
+where $p_{ij}$ is the stated probability of choosing alternative $j$ and $p_{i,\text{stay}}$ is the probability of staying.
+
+\section{Data Structure}
+
+\begin{itemize}
+    \item \textbf{Unit of observation}: Individual-scenario-alternative
+    \item \textbf{Panel structure}: Multiple scenarios per individual (\texttt{scuid})
+    \item \textbf{Key variables}:
+    \begin{itemize}
+        \item \texttt{ratio}: Log odds ratio (dependent variable)
+        \item \texttt{income}: Log income differential
+        \item \texttt{homecost}: Log housing cost differential
+        \item \texttt{crime}: Log crime rate differential
+        \item \texttt{dist}: Distance from current location
+        \item \texttt{moved}: Indicator for having moved
+    \end{itemize}
+\end{itemize}
+
+\section{Step-by-Step Guide}
+
+\subsection{Step 1: Load and Explore Data}
+
+\textbf{Commands:}
+\begin{verbatim}
+import delimited "https://raw.githubusercontent.com/OU-PhD-
+    Econometrics/fall-2026/master/LectureNotes/11-SubjExp/
+    SCEmobilityExample.csv", clear
+describe
+summarize
+\end{verbatim}
+
+\textbf{Questions:}
+\begin{enumerate}
+    \item How many individuals are in the sample?
+    \item How many scenarios does each individual evaluate on average?
+    \item What is the mean and median of the \texttt{ratio} variable?
+\end{enumerate}
+
+\subsection{Step 2: Visualize Choice Patterns}
+
+\textbf{Command:}
+\begin{verbatim}
+histogram ratio, bin(30)
+\end{verbatim}
+
+\textbf{Interpretation:} The distribution of log odds ratios reveals preference intensity. Values near zero indicate indifference between moving and staying.
+
+\subsection{Step 3: Basic Quantile Regression}
+
+\textbf{Theoretical foundation:} We estimate the conditional median:
+
+$$Q_{0.5}(\text{ratio}_{ij} | \mathbf{X}_{ij}) = \beta_0 + \beta_{\text{income}} \cdot \text{income}_{ij} + \beta_{\text{crime}} \cdot \text{crime}_{ij} + \ldots$$
+
+\textbf{Command:}
+\begin{verbatim}
+xtset scuid
+qreg ratio income homecost crime dist family size mvcost 
+    taxes norms schqual withincitymove copyhome moved
+\end{verbatim}
+
+\textbf{Questions:}
+\begin{enumerate}
+    \item What is the sign and magnitude of $\beta_{\text{income}}$?
+    \item Which attributes have the largest (in absolute value) coefficients?
+    \item Are the signs economically sensible?
+    \item How do the median regression estimates compare with OLS?
+\end{enumerate}
+
+\subsection{Step 4: Bootstrap Standard Errors}
+
+\textbf{Why bootstrap?} Standard errors must account for:
+\begin{itemize}
+    \item Within-individual correlation (clustering)
+    \item Non-normal sampling distribution of quantile estimators
+\end{itemize}
+
+\textbf{Command:}
+\begin{verbatim}
+bootstrap, cluster(scuid) reps(100): qreg ratio income 
+    homecost crime dist family size mvcost taxes norms 
+    schqual withincitymove copyhome moved
+\end{verbatim}
+
+\textbf{Questions:}
+\begin{enumerate}
+    \item How do bootstrapped SEs compare to standard SEs?
+    \item Why do we cluster at the individual (\texttt{scuid}) level?
+\end{enumerate}
+
+\subsection{Step 5: Calculate Willingness-to-Pay}
+
+\textbf{WTP formula:} For attribute $x$, willingness-to-pay is:
+
+$$\text{WTP}_x = -\left[\exp\left(-\frac{\beta_x}{\beta_{\text{income}}} \cdot \Delta x\right) - 1\right] \cdot \text{Income}_{\text{median}}$$
+
+where:
+\begin{itemize}
+    \item $\Delta x$ is the change in attribute (e.g., $\ln(2)$ for doubling crime)
+    \item Income$_{\text{median}}$ = \$65,000 (sample median)
+\end{itemize}
+
+\textbf{Example - Crime WTP:}
+\begin{verbatim}
+scalar b_inc = _b[income]
+scalar b_crime = _b[crime]
+scalar wtp_crime = -(exp(-b_crime/b_inc * ln(2)) - 1) * 65000
+display "WTP to avoid doubling crime: $" wtp_crime
+\end{verbatim}
+
+\textbf{Questions:}
+\begin{enumerate}
+    \item What is the WTP to avoid a doubling of the crime rate?
+    \item What is the WTP per mile of distance reduction?
+    \item What is the non-pecuniary moving cost?
+\end{enumerate}
+
+\subsection{Step 6: Bootstrap WTP Estimates}
+
+\textbf{Why?} WTP is a nonlinear transformation of $\beta$s. Bootstrap provides correct inference.
+
+\textbf{Command:}
+\begin{verbatim}
+bootstrap crime_wtp = (-(exp(-_b[crime]/_b[income]*ln(2))-1)*65000)
+         dist_wtp = (-(exp(-_b[dist]/_b[income])-1)*65000)
+         moved_wtp = (-(exp(-_b[moved]/_b[income])-1)*65000),
+         cluster(scuid) reps(100):
+    qreg ratio income homecost crime dist family size mvcost 
+        taxes norms schqual withincitymove copyhome moved
+\end{verbatim}
+
+\textbf{Questions:}
+\begin{enumerate}
+    \item What are the 95\% confidence intervals for each WTP?
+    \item Are the WTP estimates statistically significant?
+\end{enumerate}
+
+\section{Discussion Questions}
+
+\begin{enumerate}
+    \item \textbf{Economic interpretation}: What does a WTP of \$50,000 to avoid doubling crime mean in practice?
+    
+    \item \textbf{Heterogeneity}: How might WTP differ by demographics (age, income, family status)?
+    
+    \item \textbf{Policy relevance}: How could these estimates inform urban planning or housing policy?
+    
+    \item \textbf{Limitations}: What assumptions underlie this analysis? When might they fail?
+\end{enumerate}
+
+\section{Extensions (Optional)}
+
+\begin{enumerate}
+    \item Estimate the model separately by homeownership status
+    \item Calculate WTP as percentages of income
+    \item Examine heterogeneity using quantile regression at different percentiles ($\tau = 0.25, 0.75$)
+\end{enumerate}
+
+\section{Key Takeaways}
+
+\begin{itemize}
+    \item Quantile regression is robust to outliers and reveals distributional effects
+    \item Clustered bootstrap accounts for within-panel correlation
+    \item WTP provides economically interpretable preference measures
+    \item Nonlinear transformations require careful inference (bootstrap or delta method)
+\end{itemize}
+
+\end{document}
