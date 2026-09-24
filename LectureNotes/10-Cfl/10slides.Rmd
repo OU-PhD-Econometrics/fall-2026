@@ -322,7 +322,7 @@ using Random, LinearAlgebra, Statistics, Optim, DataFrames, CSV, HTTP, GLM, Forw
 
 # read in data
 url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS4-mixture/nlsw88t.csv"
-df = CSV.read(HTTP.get(url).body)
+df = CSV.read(HTTP.get(url).body, DataFrame)
 X = [df.age df.white df.collgrad]
 Z = hcat(df.elnwage1, df.elnwage2, df.elnwage3, df.elnwage4, 
          df.elnwage5, df.elnwage6, df.elnwage7, df.elnwage8)

@@ -53,7 +53,7 @@ function wrapper()
         coef_jump = vcat(JuMP.value.(β), JuMP.value(σ), JuMP.objective_value(model) )
         # return Hessian for SEs
         values = coef_jump[1:end-1]
-        MOI = JuMP.MathOptInterface
+        MOI = JuMP.MOI
         d = JuMP.NLPEvaluator(model)
         MOI.initialize(d, [:Hess])
         hessian_sparsity = MOI.hessian_lagrangian_structure(d)
@@ -83,7 +83,7 @@ function wrapper()
         coef_jump = vcat(JuMP.value.(β), JuMP.value(σ), JuMP.objective_value(model) )
         # return Hessian for SEs
         values = coef_jump[1:end-1]
-        MOI = JuMP.MathOptInterface
+        MOI = JuMP.MOI
         d = JuMP.NLPEvaluator(model)
         MOI.initialize(d, [:Hess])
         hessian_sparsity = MOI.hessian_lagrangian_structure(d)
@@ -154,7 +154,7 @@ function wrapper()
         coef_jump = vcat(JuMP.value.(β), JuMP.value(σ), JuMP.objective_value(model) )
         # return Hessian for SEs
         values = coef_jump[1:end-1]
-        MOI = JuMP.MathOptInterface
+        MOI = JuMP.MOI
         d = JuMP.NLPEvaluator(model)
         MOI.initialize(d, [:Hess])
         hessian_sparsity = MOI.hessian_lagrangian_structure(d)
