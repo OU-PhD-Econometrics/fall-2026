@@ -1,4 +1,4 @@
-using JuMP, Ipopt, Optim, LineSearches, LinearAlgebra, SparseArrays, Distributions, DataFrames, CSV, HTTP
+using JuMP, Ipopt, Optim, LineSearches, LinearAlgebra, SparseArrays, Distributions, DataFrames, CSV, HTTP, ForwardDiff
 
 function dense_hessian(hessian_sparsity, V, n)
     I = [i for (i,j) in hessian_sparsity]
@@ -9,7 +9,7 @@ end
 
 function wrapper()
     # Let's read in the data from PS8
-    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2020/master/ProblemSets/PS8-factor/nlsy.csv"
+    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS8-factor/nlsy.csv"
     df = CSV.read(HTTP.get(url).body, DataFrame)
     X = [df.black df.hispanic df.female df.schoolt df.gradHS df.grad4yr ones(size(df,1),1)]
     y = df.logwage
@@ -29,7 +29,7 @@ function wrapper()
 
     # run the optimizer for MLE
     svals = vcat(X\y,.5);
-    td = TwiceDifferentiable(th -> reg_mle(th, X, y), svals; autodiff = :forward)
+    td = TwiceDifferentiable(th -> reg_mle(th, X, y), svals; autodiff = Optim.ADTypes.AutoForwardDiff())
     θ̂_optim_ad = optimize(td, svals, Newton(linesearch = BackTracking()), Optim.Options(g_tol = 1e-5, iterations=100_000, show_trace=true, show_every=1))
     θ̂_mle_optim_ad = θ̂_optim_ad.minimizer
     loglikeval = θ̂_optim_ad.minimum
@@ -122,7 +122,7 @@ function wrapper()
     svals = vcat(X\y,.5)
     # constraints are treated as data, so take them out of starting values (they get added back in inside the obj function)
     deleteat!(svals, convert(Int64,cns_mat[1,1]))
-    td = TwiceDifferentiable(th -> cns_reg_mle(th, cns_mat, X, y), svals; autodiff = :forward)
+    td = TwiceDifferentiable(th -> cns_reg_mle(th, cns_mat, X, y), svals; autodiff = Optim.ADTypes.AutoForwardDiff())
     θ̂_optim_ad = optimize(td, svals, Newton(linesearch = BackTracking()), Optim.Options(g_tol = 1e-5, iterations=100_000, show_trace=true, show_every=1))
     θ̂_mle_optim_ad = θ̂_optim_ad.minimizer
     loglikeval = θ̂_optim_ad.minimum
@@ -222,7 +222,7 @@ function wrapper()
     for r=1:size(cns_mat2,1)
         deleteat!(svals, convert(Int64,cns_mat2[r,1]))
     end
-    td = TwiceDifferentiable(th -> cns2_reg_mle(th, cns_mat2, X, y), svals; autodiff = :forward)
+    td = TwiceDifferentiable(th -> cns2_reg_mle(th, cns_mat2, X, y), svals; autodiff = Optim.ADTypes.AutoForwardDiff())
     θ̂_optim_ad = optimize(td, svals, Newton(linesearch = BackTracking()), Optim.Options(g_tol = 1e-5, iterations=100_000, show_trace=true, show_every=1))
     θ̂_mle_optim_ad = θ̂_optim_ad.minimizer
     loglikeval = θ̂_optim_ad.minimum
@@ -335,7 +335,7 @@ function wrapper()
         return nothing
     end
 
-    td = TwiceDifferentiable(f, g!, bstart, autodiff = :forwarddiff)
+    td = TwiceDifferentiable(f, g!, bstart, autodiff = Optim.ADTypes.AutoForwardDiff())
     rs = optimize(td, bstart, LBFGS(; linesearch = LineSearches.BackTracking()), Optim.Options(iterations=100_000,g_tol=1e-8,f_tol=1e-8,x_tol=1e-8,show_trace=true))
     β  = Optim.minimizer(rs)
     ℓ  = Optim.minimum(rs)*(-1)
@@ -346,7 +346,7 @@ function wrapper()
     return β,se,ℓ,g
     end
 
-    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2020/master/ProblemSets/PS4-mixture/nlsw88t.csv"
+    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS4-mixture/nlsw88t.csv"
     dff = CSV.read(HTTP.get(url).body, DataFrame)
     XX = [dff.age dff.white dff.collgrad]
     ZZ = cat(dff.elnwage1, dff.elnwage2, dff.elnwage3, dff.elnwage4, 
@@ -388,7 +388,7 @@ function wrapper()
     end
     ZZ = cat(dff.elnwage1, dff.elnwage2, dff.elnwage3, dff.elnwage4, 
              dff.elnwage5, dff.elnwage6, dff.elnwage7, dff.elnwage8; dims=2)
-    td = TwiceDifferentiable(theta -> mlogit_with_Z(theta, XX, ZZ, yy), startvals; autodiff = :forward)
+    td = TwiceDifferentiable(theta -> mlogit_with_Z(theta, XX, ZZ, yy), startvals; autodiff = Optim.ADTypes.AutoForwardDiff())
     # run the optimizer
     theta_hat_optim_ad = optimize(td, startvals, LBFGS(; linesearch = LineSearches.BackTracking()), Optim.Options(iterations=100_000,g_tol=1e-8,f_tol=1e-8,x_tol=1e-8,show_trace=true))
     theta_hat_mle_ad = theta_hat_optim_ad.minimizer

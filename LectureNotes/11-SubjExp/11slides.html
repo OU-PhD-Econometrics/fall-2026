@@ -398,7 +398,7 @@ where `\(\tilde{P}\)` is the recoded probability and `\(\eta_{i1}\)` is the diff
 ``` julia
 using DataFrames, HTTP, CSV, GLM, QuantileRegressions
 
-url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2021/master/LectureNotes/11-SubjExp/SCEmobilityExample.csv"
+url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/LectureNotes/11-SubjExp/SCEmobilityExample.csv"
 df = CSV.read(HTTP.get(url).body)
 
 println(head(df))

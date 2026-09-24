@@ -14,7 +14,7 @@ println("min is ",Optim.minimum(result))
 #:::::::::::::::::::::::::::::::::::::::::::::::::::
 # question 2
 #:::::::::::::::::::::::::::::::::::::::::::::::::::
-url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2022/master/ProblemSets/PS1-julia-intro/nlsw88.csv"
+url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS1-julia-intro/nlsw88.csv"
 df = CSV.read(HTTP.get(url).body, DataFrame)
 X = [ones(size(df,1),1) df.age df.race.==1 df.collgrad.==1]
 y = df.married.==1

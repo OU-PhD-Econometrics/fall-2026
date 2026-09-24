@@ -331,7 +331,7 @@ and $\overline{r}_{X}^{\text{bp}}$ is a bound on $r$
 
 - Below is a code snippet that shows how to use each of these Stata packages
 
-- The [full do-file](https://github.com/OU-PhD-Econometrics/fall-2022/blob/master/LectureNotes/15-RCR/sensitivity_examples.do) is available on GitHub
+- The [full do-file](https://github.com/OU-PhD-Econometrics/fall-2026/blob/master/LectureNotes/15-RCR/sensitivity_examples.do) is available on GitHub
 
 .scroll-box-12[
 ```{c++,eval=F}

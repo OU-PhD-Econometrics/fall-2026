@@ -5,7 +5,7 @@ capture log close
 
 log using constrainedOpt.log, replace
 
-insheet using "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2020/master/ProblemSets/PS8-factor/nlsy.csv", comma case clear
+insheet using "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS8-factor/nlsy.csv", comma case clear
 
 * various regression estimates of returns to schooling
 reg logwage black hispanic female schoolt gradHS grad4yr

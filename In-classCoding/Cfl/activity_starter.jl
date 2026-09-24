@@ -28,7 +28,7 @@ include("../../ProblemSets/PS4-mixture/PS4_Ransom_source.jl")
 
 # Estimate
 println("Estimating model...")
-td = TwiceDifferentiable(b -> mlogit_with_Z(b, X, Z, y), θ_start; autodiff = :forward)
+td = TwiceDifferentiable(b -> mlogit_with_Z(b, X, Z, y), θ_start; autodiff = Optim.ADTypes.AutoForwardDiff())
 θ̂_optim = optimize(td, θ_start, LBFGS(), Optim.Options(g_tol=1e-5, iterations=100_000))
 θ̂_mle = θ̂_optim.minimizer
 H = Optim.hessian!(td, θ̂_mle)

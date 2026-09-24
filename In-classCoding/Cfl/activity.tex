@@ -40,7 +40,7 @@ Use your code from PS4 to load data and define the likelihood function:
 \begin{minted}[bgcolor=bg]{julia}
 Load data (same as PS4)
 url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/
-fall-2020/master/ProblemSets/PS4-mixture/nlsw88t.csv"
+fall-2026/master/ProblemSets/PS4-mixture/nlsw88t.csv"
 df = CSV.read(HTTP.get(url).body, DataFrame)
 X = [df.age df.white df.collgrad]
 Z = hcat(df.elnwage1, df.elnwage2, df.elnwage3, df.elnwage4,
@@ -59,7 +59,7 @@ theta_start = [.0403744; .2439942; -1.57132; .0433254; .1468556;
 \begin{minted}[bgcolor=bg]{julia}
 Estimate (same procedure as PS4)
 td = TwiceDifferentiable(b -> mlogit_with_Z(b, X, Z, y),
-theta_start; autodiff = :forward)
+theta_start; autodiff = Optim.ADTypes.AutoForwardDiff())
 theta_optim = optimize(td, theta_start, LBFGS(),
 Optim.Options(g_tol = 1e-5, iterations=100_000))
 theta_mle = theta_optim.minimizer

@@ -317,7 +317,7 @@ function run_estimation(df::DataFrame, start_vals::Vector)
     # TODO: Prepare data matrices
     
     # TODO: Create TwiceDifferentiable objective
-    # Use autodiff = :forward for ForwardDiff
+    # Use autodiff = Optim.ADTypes.AutoForwardDiff() for ForwardDiff
     
     # TODO: Optimize using Newton method
     # Optim.Options: set g_tol, iterations, show_trace as appropriate
@@ -369,7 +369,7 @@ This function runs through all questions sequentially:
 """
 function main()
     # Data URL
-    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2022/master/ProblemSets/PS8-factor/nlsy.csv"
+    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS8-factor/nlsy.csv"
     
     println("="^80)
     println("Problem Set 8: Factor Models and Dimension Reduction")

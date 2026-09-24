@@ -67,7 +67,7 @@ This is a professional coding practice that makes function signatures manageable
 """
 function load_dynamic_data()
     # Load data
-    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2024/master/ProblemSets/PS5-ddc/busdata.csv"
+    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS5-ddc/busdata.csv"
     df = CSV.read(HTTP.get(url).body, DataFrame)
     
     # Extract matrices and vectors

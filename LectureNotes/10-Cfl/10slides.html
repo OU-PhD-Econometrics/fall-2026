@@ -349,7 +349,7 @@ This code comes from the first question of Problem Set 4:
 using Random, LinearAlgebra, Statistics, Optim, DataFrames, CSV, HTTP, GLM, ForwardDiff, FreqTables
 
 # read in data
-url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2020/master/ProblemSets/PS4-mixture/nlsw88t.csv"
+url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS4-mixture/nlsw88t.csv"
 df = CSV.read(HTTP.get(url).body)
 X = [df.age df.white df.collgrad]
 Z = hcat(df.elnwage1, df.elnwage2, df.elnwage3, df.elnwage4, 
@@ -359,7 +359,7 @@ y = df.occ_code
 # estimate multionomial logit model
 include("mlogit_with_Z.jl")
 θ_start = [ .0403744; .2439942; -1.57132; .0433254; .1468556; -2.959103; .1020574; .7473086; -4.12005; .0375628; .6884899; -3.65577; .0204543; -.3584007; -4.376929; .1074636; -.5263738; -6.199197; .1168824; -.2870554; -5.322248; 1.307477]
-td = TwiceDifferentiable(b -&gt; mlogit_with_Z(b, X, Z, y), θ_start; autodiff = :forward);
+td = TwiceDifferentiable(b -&gt; mlogit_with_Z(b, X, Z, y), θ_start; autodiff = Optim.ADTypes.AutoForwardDiff());
 θ̂_optim_ad = optimize(td, θ_start, LBFGS(), Optim.Options(g_tol = 1e-5, iterations=100_000, show_trace=true, show_every=50));
 θ̂_mle_ad = θ̂_optim_ad.minimizer
 H  = Optim.hessian!(td, θ̂_mle_ad)

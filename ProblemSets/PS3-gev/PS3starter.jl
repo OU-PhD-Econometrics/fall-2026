@@ -86,9 +86,9 @@ function nested_logit_with_Z(theta, X, Z, y, nesting_structure)
     
     # Create coefficient matrix for nested structure
     # First K columns for WC nest, next K for BC nest, zeros for Other
-    bigAlpha = [repeat(alpha[1:K], 1, length(nesting_structure[1])) 
-                repeat(alpha[K+1:2K], 1, length(nesting_structure[2])) 
-                zeros(K)]
+    bigAlpha = hcat(repeat(alpha[1:K], 1, length(nesting_structure[1])),
+                    repeat(alpha[K+1:2K], 1, length(nesting_structure[2])),
+                    zeros(K))
     
     # TODO: Implement nested logit probability calculation
     # This is complex - refer to the formula in the problem set
@@ -165,7 +165,7 @@ end
 
 function allwrap()
     # Load data
-    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2024/master/ProblemSets/PS3-gev/nlsw88w.csv"
+    url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/master/ProblemSets/PS3-gev/nlsw88w.csv"
     df, X, Z, y = load_data(url)
     
     println("Data loaded successfully!")
