@@ -55,6 +55,7 @@ You will need to load the following packages:
 using DataFrames
 using CSV
 using HTTP
+using ForwardDiff
 url = "https://raw.githubusercontent.com/OU-PhD-Econometrics/fall-2026/
 master/ProblemSets/PS4-mixture/nlsw88t.csv"
 df = CSV.read(HTTP.get(url).body, DataFrame)
