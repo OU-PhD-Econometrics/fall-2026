@@ -2,7 +2,7 @@
 # ECON 6343: Econometrics III
 # Multinomial and Mixed Logit Estimation
 
-using Random, LinearAlgebra, Statistics, Optim, DataFrames, CSV, HTTP, GLM, FreqTables, Distributions, ForwardDiff
+using ForwardDiff, Random, LinearAlgebra, Statistics, Optim, DataFrames, CSV, HTTP, GLM, FreqTables, Distributions, ForwardDiff
 
 # Include quadrature function (make sure lgwt.jl is in your working directory)
 include("lgwt.jl")
